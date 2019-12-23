@@ -255,6 +255,12 @@ public class XxlJobExecutor  {
             oldJobThread.interrupt();
         }
     }
+
+    /***
+     * 根据jobId 从本地内存里获得job已有的Thread
+     * @param jobId
+     * @return
+     */
     public static JobThread loadJobThread(int jobId){
         JobThread jobThread = jobThreadRepository.get(jobId);
         return jobThread;

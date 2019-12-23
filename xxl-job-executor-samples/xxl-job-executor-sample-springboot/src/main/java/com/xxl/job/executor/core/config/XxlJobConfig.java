@@ -11,6 +11,7 @@ import org.springframework.context.annotation.Configuration;
  * xxl-job config
  *
  * @author xuxueli 2017-04-28
+ * 调度任务执行器的配置
  */
 @Configuration
 public class XxlJobConfig {
@@ -37,7 +38,10 @@ public class XxlJobConfig {
     @Value("${xxl.job.executor.logretentiondays}")
     private int logRetentionDays;
 
-
+    /***
+     * 生成一个执行器组件
+     * @return
+     */
     @Bean(initMethod = "start", destroyMethod = "destroy")
     public XxlJobSpringExecutor xxlJobExecutor() {
         logger.info(">>>>>>>>>>> xxl-job config init.");

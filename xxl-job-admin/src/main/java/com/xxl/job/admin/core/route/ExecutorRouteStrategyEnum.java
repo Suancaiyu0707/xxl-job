@@ -5,6 +5,7 @@ import com.xxl.job.admin.core.util.I18nUtil;
 
 /**
  * Created by xuxueli on 17/3/10.
+ * 路由策略的枚举类
  */
 public enum ExecutorRouteStrategyEnum {
 

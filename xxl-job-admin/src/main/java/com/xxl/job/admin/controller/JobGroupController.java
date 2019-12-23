@@ -32,6 +32,11 @@ public class JobGroupController {
 	@Resource
 	public XxlJobGroupDao xxlJobGroupDao;
 
+	/***
+	 * 查询执行器列表
+	 * @param model
+	 * @return
+	 */
 	@RequestMapping
 	public String index(Model model) {
 
@@ -42,6 +47,11 @@ public class JobGroupController {
 		return "jobgroup/jobgroup.index";
 	}
 
+	/***
+	 * 添加一个执行器
+	 * @param xxlJobGroup
+	 * @return
+	 */
 	@RequestMapping("/save")
 	@ResponseBody
 	public ReturnT<String> save(XxlJobGroup xxlJobGroup){
@@ -72,6 +82,11 @@ public class JobGroupController {
 		return (ret>0)?ReturnT.SUCCESS:ReturnT.FAIL;
 	}
 
+	/***
+	 * 更新一个执行器
+	 * @param xxlJobGroup
+	 * @return
+	 */
 	@RequestMapping("/update")
 	@ResponseBody
 	public ReturnT<String> update(XxlJobGroup xxlJobGroup){
@@ -137,6 +152,11 @@ public class JobGroupController {
 		return appAddressMap.get(appNameParam);
 	}
 
+	/***
+	 * 移除一个执行器
+	 * @param id
+	 * @return
+	 */
 	@RequestMapping("/remove")
 	@ResponseBody
 	public ReturnT<String> remove(int id){

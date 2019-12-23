@@ -113,6 +113,13 @@ public class XxlJobScheduler implements InitializingBean, DisposableBean {
 
     // ---------------------- executor-client ----------------------
     private static ConcurrentHashMap<String, ExecutorBiz> executorBizRepository = new ConcurrentHashMap<String, ExecutorBiz>();
+
+    /***
+     * 根据地址获得对应的业务执行器 ExecutorBiz
+     * @param address
+     * @return
+     * @throws Exception
+     */
     public static ExecutorBiz getExecutorBiz(String address) throws Exception {
         // valid
         if (address==null || address.trim().length()==0) {

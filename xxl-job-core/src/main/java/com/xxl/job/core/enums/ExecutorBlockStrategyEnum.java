@@ -2,12 +2,15 @@ package com.xxl.job.core.enums;
 
 /**
  * Created by xuxueli on 17/5/9.
+ * 阻塞策略枚举类
  */
 public enum ExecutorBlockStrategyEnum {
-
+    //窜行策略
     SERIAL_EXECUTION("Serial execution"),
     /*CONCURRENT_EXECUTION("并行"),*/
+    //丢弃后面的任务
     DISCARD_LATER("Discard Later"),
+    //覆盖策略
     COVER_EARLY("Cover Early");
 
     private String title;

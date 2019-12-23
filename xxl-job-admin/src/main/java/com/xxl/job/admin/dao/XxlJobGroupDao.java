@@ -11,7 +11,7 @@ import java.util.List;
  */
 @Mapper
 public interface XxlJobGroupDao {
-
+    //查询 执行器列表
     public List<XxlJobGroup> findAll();
 
     public List<XxlJobGroup> findByAddressType(@Param("addressType") int addressType);

@@ -66,21 +66,28 @@ public class ExecutorBizImpl implements ExecutorBiz {
         return new ReturnT<LogResult>(logResult);
     }
 
+    /***
+     * 调用执行相应的业务线程
+     * @param triggerParam
+     * @return
+     */
     @Override
     public ReturnT<String> run(TriggerParam triggerParam) {
         // load old：jobHandler + jobThread
+        //根据jobId获得已存在的线程JobThread和jobHandler
         JobThread jobThread = XxlJobExecutor.loadJobThread(triggerParam.getJobId());
         IJobHandler jobHandler = jobThread!=null?jobThread.getHandler():null;
         String removeOldReason = null;
 
         // valid：jobHandler + jobThread
+        //获得Glue类型
         GlueTypeEnum glueTypeEnum = GlueTypeEnum.match(triggerParam.getGlueType());
-        if (GlueTypeEnum.BEAN == glueTypeEnum) {
+        if (GlueTypeEnum.BEAN == glueTypeEnum) {//如果是BEAN类型
 
-            // new jobhandler
+            // 根据执行器名称，从本地内存里里获取IJobHandler
             IJobHandler newJobHandler = XxlJobExecutor.loadJobHandler(triggerParam.getExecutorHandler());
 
-            // valid old jobThread
+            // 如果存在旧的jobThread，且旧的jobHandler和新的IJobHandler不相等，则可能执行器或Glue发生改变，所以必须暂停旧的任务
             if (jobThread!=null && jobHandler != newJobHandler) {
                 // change handler, need kill old thread
                 removeOldReason = "change jobhandler or glue type, and terminate the old job thread.";
@@ -89,7 +96,7 @@ public class ExecutorBizImpl implements ExecutorBiz {
                 jobHandler = null;
             }
 
-            // valid handler
+            // 如果旧的 jobHandler为空，则要新建一个jobHandler
             if (jobHandler == null) {
                 jobHandler = newJobHandler;
                 if (jobHandler == null) {
@@ -143,14 +150,15 @@ public class ExecutorBizImpl implements ExecutorBiz {
 
         // executor block strategy
         if (jobThread != null) {
+            //获得阻塞策略
             ExecutorBlockStrategyEnum blockStrategy = ExecutorBlockStrategyEnum.match(triggerParam.getExecutorBlockStrategy(), null);
-            if (ExecutorBlockStrategyEnum.DISCARD_LATER == blockStrategy) {
-                // discard when running
+            if (ExecutorBlockStrategyEnum.DISCARD_LATER == blockStrategy) {//丢弃后面任务的策略
+                // 如果当前线程还在跑，获取等待的队列不为空，则丢弃这新来的任务
                 if (jobThread.isRunningOrHasQueue()) {
                     return new ReturnT<String>(ReturnT.FAIL_CODE, "block strategy effect："+ExecutorBlockStrategyEnum.DISCARD_LATER.getTitle());
                 }
-            } else if (ExecutorBlockStrategyEnum.COVER_EARLY == blockStrategy) {
-                // kill running jobThread
+            } else if (ExecutorBlockStrategyEnum.COVER_EARLY == blockStrategy) {//如果是覆盖之前的任务
+                // 如果当前有任务还在跑，或者队列不为空，则执行杀掉当前任务
                 if (jobThread.isRunningOrHasQueue()) {
                     removeOldReason = "block strategy effect：" + ExecutorBlockStrategyEnum.COVER_EARLY.getTitle();
 

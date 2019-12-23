@@ -39,7 +39,14 @@ public class JobInfoController {
 	private XxlJobGroupDao xxlJobGroupDao;
 	@Resource
 	private XxlJobService xxlJobService;
-	
+
+	/***
+	 * 初始化进入 任务列表页面
+	 * @param request
+	 * @param model
+	 * @param jobGroup 执行器id
+	 * @return
+	 */
 	@RequestMapping
 	public String index(HttpServletRequest request, Model model, @RequestParam(required = false, defaultValue = "-1") int jobGroup) {
 
@@ -51,7 +58,7 @@ public class JobInfoController {
 		// 执行器列表
 		List<XxlJobGroup> jobGroupList_all =  xxlJobGroupDao.findAll();
 
-		// filter group
+		// filter group 返回拥有权限的执行器列表
 		List<XxlJobGroup> jobGroupList = filterJobGroupByRole(request, jobGroupList_all);
 		if (jobGroupList==null || jobGroupList.size()==0) {
 			throw new XxlJobException(I18nUtil.getString("jobgroup_empty"));
@@ -63,13 +70,19 @@ public class JobInfoController {
 		return "jobinfo/jobinfo.index";
 	}
 
+	/***
+	 * 根据用户角色过滤任务列表(角色执行的是执行器的权限)
+	 * @param request
+	 * @param jobGroupList_all
+	 * @return
+	 */
 	public static List<XxlJobGroup> filterJobGroupByRole(HttpServletRequest request, List<XxlJobGroup> jobGroupList_all){
 		List<XxlJobGroup> jobGroupList = new ArrayList<>();
 		if (jobGroupList_all!=null && jobGroupList_all.size()>0) {
-			XxlJobUser loginUser = (XxlJobUser) request.getAttribute(LoginService.LOGIN_IDENTITY_KEY);
-			if (loginUser.getRole() == 1) {
+			XxlJobUser loginUser = (XxlJobUser) request.getAttribute(LoginService.LOGIN_IDENTITY_KEY);//获得用户信息
+			if (loginUser.getRole() == 1) {//如果是管理员，则拥有所有的执行器的权限
 				jobGroupList = jobGroupList_all;
-			} else {
+			} else {//判断用户是否具有执行器对应的权限
 				List<String> groupIdStrs = new ArrayList<>();
 				if (loginUser.getPermission()!=null && loginUser.getPermission().trim().length()>0) {
 					groupIdStrs = Arrays.asList(loginUser.getPermission().trim().split(","));
@@ -83,13 +96,29 @@ public class JobInfoController {
 		}
 		return jobGroupList;
 	}
+
+	/***
+	 * 检查用户是否持有某个执行器的权限
+	 * @param request
+	 * @param jobGroup 执行器id
+	 */
 	public static void validPermission(HttpServletRequest request, int jobGroup) {
 		XxlJobUser loginUser = (XxlJobUser) request.getAttribute(LoginService.LOGIN_IDENTITY_KEY);
 		if (!loginUser.validPermission(jobGroup)) {
 			throw new RuntimeException(I18nUtil.getString("system_permission_limit") + "[username="+ loginUser.getUsername() +"]");
 		}
 	}
-	
+
+	/***
+	 * 查询任务列表
+	 * @param start
+	 * @param length
+	 * @param jobGroup 执行器id
+	 * @param jobDesc 任务描述
+	 * @param executorHandler JobHandler
+	 * @param filterTime
+	 * @return
+	 */
 	@RequestMapping("/pageList")
 	@ResponseBody
 	public Map<String, Object> pageList(@RequestParam(required = false, defaultValue = "0") int start,  
@@ -98,46 +127,77 @@ public class JobInfoController {
 		
 		return xxlJobService.pageList(start, length, jobGroup, jobDesc, executorHandler, filterTime);
 	}
-	
+
+	/***
+	 * 添加一个job任务
+	 * @param jobInfo
+	 * @return
+	 */
 	@RequestMapping("/add")
 	@ResponseBody
 	public ReturnT<String> add(XxlJobInfo jobInfo) {
 		return xxlJobService.add(jobInfo);
 	}
-	
+
+	/***
+	 * 更新job任务信息
+	 * @param jobInfo
+	 * @return
+	 */
 	@RequestMapping("/update")
 	@ResponseBody
 	public ReturnT<String> update(XxlJobInfo jobInfo) {
 		return xxlJobService.update(jobInfo);
 	}
-	
+
+	/**
+	 * 移除任务信息
+	 * @param id
+	 * @return
+	 */
 	@RequestMapping("/remove")
 	@ResponseBody
 	public ReturnT<String> remove(int id) {
 		return xxlJobService.remove(id);
 	}
-	
+
+	/***
+	 * 暂停某个job任务
+	 * @param id
+	 * @return
+	 */
 	@RequestMapping("/stop")
 	@ResponseBody
 	public ReturnT<String> pause(int id) {
 		return xxlJobService.stop(id);
 	}
-	
+
+	/***
+	 * 启动某个job任务
+	 * @param id
+	 * @return
+	 */
 	@RequestMapping("/start")
 	@ResponseBody
 	public ReturnT<String> start(int id) {
 		return xxlJobService.start(id);
 	}
-	
+
+	/***
+	 * 执行某个job任务
+	 * @param id
+	 * @param executorParam
+	 * @return
+	 */
 	@RequestMapping("/trigger")
 	@ResponseBody
 	//@PermissionLimit(limit = false)
 	public ReturnT<String> triggerJob(int id, String executorParam) {
 		// force cover job param
-		if (executorParam == null) {
+		if (executorParam == null) {//检查任务参数
 			executorParam = "";
 		}
-
+		//触发任务
 		JobTriggerPoolHelper.trigger(id, TriggerTypeEnum.MANUAL, -1, null, executorParam);
 		return ReturnT.SUCCESS;
 	}

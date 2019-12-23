@@ -234,21 +234,21 @@ public class XxlJobServiceImpl implements XxlJobService {
 
 	@Override
 	public ReturnT<String> start(int id) {
-		XxlJobInfo xxlJobInfo = xxlJobInfoDao.loadById(id);
+		XxlJobInfo xxlJobInfo = xxlJobInfoDao.loadById(id);//查找要启动的任务信息
 
 		// next trigger time (10s后生效，避开预读周期)
 		long nextTriggerTime = 0;
-		try {
+		try {//获得下一次触发的时间
 			nextTriggerTime = new CronExpression(xxlJobInfo.getJobCron()).getNextValidTimeAfter(new Date(System.currentTimeMillis() + 10000)).getTime();
 		} catch (ParseException e) {
 			logger.error(e.getMessage(), e);
 			return new ReturnT<String>(ReturnT.FAIL_CODE, I18nUtil.getString("jobinfo_field_cron_unvalid")+" | "+ e.getMessage());
 		}
-
+		//触发状态 0-停止 1-运行
 		xxlJobInfo.setTriggerStatus(1);
 		xxlJobInfo.setTriggerLastTime(0);
 		xxlJobInfo.setTriggerNextTime(nextTriggerTime);
-
+		//更想你任务的信息
 		xxlJobInfoDao.update(xxlJobInfo);
 		return ReturnT.SUCCESS;
 	}

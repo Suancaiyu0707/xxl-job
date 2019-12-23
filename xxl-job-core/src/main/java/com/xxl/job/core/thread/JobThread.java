@@ -38,7 +38,11 @@ public class JobThread extends Thread{
     private boolean running = false;    // if running job
 	private int idleTimes = 0;			// idel times
 
-
+	/***
+	 * 每个job会绑定一个JobThread线程，每个线程会绑定对应的 handler类型
+	 * @param jobId
+	 * @param handler
+	 */
 	public JobThread(int jobId, IJobHandler handler) {
 		this.jobId = jobId;
 		this.handler = handler;
@@ -95,6 +99,7 @@ public class JobThread extends Thread{
 
     	// init
     	try {
+    		//初始化handler信息
 			handler.init();
 		} catch (Throwable e) {
     		logger.error(e.getMessage(), e);
@@ -110,7 +115,7 @@ public class JobThread extends Thread{
             try {
 				// to check toStop signal, we need cycle, so wo cannot use queue.take(), instand of poll(timeout)
 				triggerParam = triggerQueue.poll(3L, TimeUnit.SECONDS);
-				if (triggerParam!=null) {
+				if (triggerParam!=null) {//如果有等待的任务
 					running = true;
 					idleTimes = 0;
 					triggerLogIdSet.remove(triggerParam.getLogId());
@@ -118,11 +123,12 @@ public class JobThread extends Thread{
 					// log filename, like "logPath/yyyy-MM-dd/9999.log"
 					String logFileName = XxlJobFileAppender.makeLogFileName(new Date(triggerParam.getLogDateTim()), triggerParam.getLogId());
 					XxlJobFileAppender.contextHolder.set(logFileName);
+					//设置分片信息
 					ShardingUtil.setShardingVo(new ShardingUtil.ShardingVO(triggerParam.getBroadcastIndex(), triggerParam.getBroadcastTotal()));
 
 					// execute
 					XxlJobLogger.log("<br>----------- xxl-job job execute start -----------<br>----------- Param:" + triggerParam.getExecutorParams());
-
+					//如果设置了超时时间
 					if (triggerParam.getExecutorTimeout() > 0) {
 						// limit timeout
 						Thread futureThread = null;

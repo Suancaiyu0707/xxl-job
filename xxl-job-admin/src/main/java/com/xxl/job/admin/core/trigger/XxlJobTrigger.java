@@ -28,13 +28,13 @@ public class XxlJobTrigger {
     /**
      * trigger job
      *
-     * @param jobId
-     * @param triggerType
-     * @param failRetryCount 失败重试的次数
+     * @param jobId eg：6
+     * @param triggerType eg：NANUAL
+     * @param failRetryCount 失败重试的次数 eg： -1
      * 			>=0: use this param
      * 			<0: use param from job info config
-     * @param executorShardingParam
-     * @param executorParam
+     * @param executorShardingParam eg：null
+     * @param executorParam eg：""
      *          null: use job param
      *          not null: cover job param
      */
@@ -139,7 +139,7 @@ public class XxlJobTrigger {
         // 3、init address
         String address = null;
         ReturnT<String> routeAddressResult = null;
-        //获得执行器的注册地址类标
+        //获得执行器的注册地址类标，每个执行器都有地址列表
         if (group.getRegistryList()!=null && !group.getRegistryList().isEmpty()) {
             //如果是广播策略
             if (ExecutorRouteStrategyEnum.SHARDING_BROADCAST == executorRouteStrategyEnum) {
@@ -153,7 +153,7 @@ public class XxlJobTrigger {
                 //根据触发参数和执行器列表，根据具体的策略方式，获得对应的路由地址
                 routeAddressResult = executorRouteStrategyEnum.getRouter().route(triggerParam, group.getRegistryList());
                 if (routeAddressResult.getCode() == ReturnT.SUCCESS_CODE) {
-                    address = routeAddressResult.getContent();
+                    address = routeAddressResult.getContent();//192.168.0.103:9999
                 }
             }
         } else {
@@ -203,7 +203,7 @@ public class XxlJobTrigger {
     /**
      * 执行触发的任务
      * @param triggerParam
-     * @param address
+     * @param address 执行器的地址：192.168.0.103:9999
      * @return
      */
     public static ReturnT<String> runExecutor(TriggerParam triggerParam, String address){

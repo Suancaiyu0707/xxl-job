@@ -64,11 +64,11 @@ public class JobTriggerPoolHelper {
 
     /***
      * 添加一个触发任务
-     * @param jobId
-     * @param triggerType
-     * @param failRetryCount
-     * @param executorShardingParam
-     * @param executorParam
+     * @param jobId eg：6
+     * @param triggerType eg：MANUAL
+     * @param failRetryCount eg：-1
+     * @param executorShardingParam eg：null
+     * @param executorParam eg：""
      */
     public void addTrigger(final int jobId, final TriggerTypeEnum triggerType, final int failRetryCount, final String executorShardingParam, final String executorParam) {
 
@@ -134,13 +134,13 @@ public class JobTriggerPoolHelper {
     private static JobTriggerPoolHelper helper = new JobTriggerPoolHelper();
 
     /**
-     * @param jobId jobInfo的主键
-     * @param triggerType
-     * @param failRetryCount
+     * @param jobId jobInfo的主键 eg：6
+     * @param triggerType eg: MANAUL
+     * @param failRetryCount eg：-1
      * 			>=0: use this param
      * 			<0: use param from job info config
-     * @param executorShardingParam
-     * @param executorParam
+     * @param executorShardingParam eg：null
+     * @param executorParam eg: ""
      *          null: use job param
      *          not null: cover job param
      */

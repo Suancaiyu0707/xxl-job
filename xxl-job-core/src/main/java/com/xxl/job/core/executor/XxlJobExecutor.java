@@ -235,6 +235,14 @@ public class XxlJobExecutor  {
 
     // ---------------------- job thread repository ----------------------
     private static ConcurrentHashMap<Integer, JobThread> jobThreadRepository = new ConcurrentHashMap<Integer, JobThread>();
+
+    /***
+     * 注册一个线程，
+     * @param jobId 任务id
+     * @param handler 实现IJobHandler的handler,通常由客户端提供
+     * @param removeOldReason
+     * @return
+     */
     public static JobThread registJobThread(int jobId, IJobHandler handler, String removeOldReason){
         JobThread newJobThread = new JobThread(jobId, handler);
         newJobThread.start();

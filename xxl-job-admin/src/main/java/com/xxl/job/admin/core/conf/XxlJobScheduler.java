@@ -116,7 +116,7 @@ public class XxlJobScheduler implements InitializingBean, DisposableBean {
 
     /***
      * 根据地址获得对应的业务执行器 ExecutorBiz
-     * @param address
+     * @param address 执行器地址：192.168.0.103:9999
      * @return
      * @throws Exception
      */
@@ -135,18 +135,18 @@ public class XxlJobScheduler implements InitializingBean, DisposableBean {
 
         // set-cache
         executorBiz = (ExecutorBiz) new XxlRpcReferenceBean(
-                NetEnum.NETTY_HTTP,
-                Serializer.SerializeEnum.HESSIAN.getSerializer(),
-                CallType.SYNC,
-                LoadBalance.ROUND,
+                NetEnum.NETTY_HTTP, // 网络传输方式
+                Serializer.SerializeEnum.HESSIAN.getSerializer(), //序列化方式
+                CallType.SYNC, //同步/异步
+                LoadBalance.ROUND,//负载均衡方式
                 ExecutorBiz.class,
-                null,
-                5000,
-                address,
-                XxlJobAdminConfig.getAdminConfig().getAccessToken(),
+                null, //版本
+                5000, //超时时间
+                address,//执行器地址
+                XxlJobAdminConfig.getAdminConfig().getAccessToken(), //认证token
                 null,
                 null).getObject();
-
+        //存放到内存里
         executorBizRepository.put(address, executorBiz);
         return executorBiz;
     }

@@ -84,7 +84,7 @@ public class ExecutorBizImpl implements ExecutorBiz {
         GlueTypeEnum glueTypeEnum = GlueTypeEnum.match(triggerParam.getGlueType());
         if (GlueTypeEnum.BEAN == glueTypeEnum) {//如果是BEAN类型
 
-            // 根据执行器名称，从本地内存里里获取IJobHandler
+            // 根据执行器名称，从本地内存里里获取 执行器绑定的 IJobHandler
             IJobHandler newJobHandler = XxlJobExecutor.loadJobHandler(triggerParam.getExecutorHandler());
 
             // 如果存在旧的jobThread，且旧的jobHandler和新的IJobHandler不相等，则可能执行器或Glue发生改变，所以必须暂停旧的任务
@@ -96,7 +96,7 @@ public class ExecutorBizImpl implements ExecutorBiz {
                 jobHandler = null;
             }
 
-            // 如果旧的 jobHandler为空，则要新建一个jobHandler
+            // 如果旧的 jobHandler为空，则要新建一个执行器绑定的 IJobHandler
             if (jobHandler == null) {
                 jobHandler = newJobHandler;
                 if (jobHandler == null) {

@@ -1,10 +1,8 @@
-package com.xxl.job.executor.service.jobhandler;
+package com.xuxueli.executor.sample.jboot.jobhandler;
 
 import com.xxl.job.core.biz.model.ReturnT;
 import com.xxl.job.core.handler.IJobHandler;
-import com.xxl.job.core.handler.annotation.JobHandler;
 import com.xxl.job.core.log.XxlJobLogger;
-import org.springframework.stereotype.Component;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -16,8 +14,6 @@ import java.net.URL;
  *
  * @author xuxueli 2018-09-16 03:48:34
  */
-@JobHandler(value = "httpJobHandler")
-@Component
 public class HttpJobHandler extends IJobHandler {
 
     @Override
@@ -54,7 +50,7 @@ public class HttpJobHandler extends IJobHandler {
             }
 
             // result
-            bufferedReader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+            bufferedReader = new BufferedReader(new InputStreamReader(connection.getInputStream(), "UTF-8"));
             StringBuilder result = new StringBuilder();
             String line;
             while ((line = bufferedReader.readLine()) != null) {

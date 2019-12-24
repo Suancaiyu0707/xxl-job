@@ -14,6 +14,7 @@ import java.util.Map;
  * xxl-job executor (for spring)
  *
  * @author xuxueli 2018-11-01 09:24:52
+ * 实现ApplicationContextAware接口，用来保存spring的上下文信息
  */
 public class XxlJobSpringExecutor extends XxlJobExecutor implements ApplicationContextAware {
 
@@ -24,7 +25,7 @@ public class XxlJobSpringExecutor extends XxlJobExecutor implements ApplicationC
         // init JobHandler Repository
         initJobHandlerRepository(applicationContext);
 
-        // refresh GlueFactory
+        // 初始化一个SpringGlueFactory
         GlueFactory.refreshInstance(1);
 
 
@@ -37,10 +38,11 @@ public class XxlJobSpringExecutor extends XxlJobExecutor implements ApplicationC
             return;
         }
 
-        // init job handler action
+        // 获取JobHandler的实现类
         Map<String, Object> serviceBeanMap = applicationContext.getBeansWithAnnotation(JobHandler.class);
 
         if (serviceBeanMap!=null && serviceBeanMap.size()>0) {
+            //遍历将 JobHandler 实现类存放在内存里，
             for (Object serviceBean : serviceBeanMap.values()) {
                 if (serviceBean instanceof IJobHandler){
                     String name = serviceBean.getClass().getAnnotation(JobHandler.class).value();
@@ -48,6 +50,7 @@ public class XxlJobSpringExecutor extends XxlJobExecutor implements ApplicationC
                     if (loadJobHandler(name) != null) {
                         throw new RuntimeException("xxl-job jobhandler naming conflicts.");
                     }
+                    //注册
                     registJobHandler(name, handler);
                 }
             }

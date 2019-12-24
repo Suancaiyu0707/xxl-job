@@ -35,22 +35,25 @@ import java.util.concurrent.ConcurrentHashMap;
 public class XxlJobScheduler implements InitializingBean, DisposableBean {
     private static final Logger logger = LoggerFactory.getLogger(XxlJobScheduler.class);
 
-
+    /***
+     * 实例初始化完成后，会调用该方法
+     * @throws Exception
+     */
     @Override
     public void afterPropertiesSet() throws Exception {
-        // init i18n
+        // init i18n 初始化国际化标准
         initI18n();
 
-        // admin registry monitor run
+        // 任务注册的监控启动
         JobRegistryMonitorHelper.getInstance().start();
 
-        // admin monitor run
+        // 任务失败监控的启动
         JobFailMonitorHelper.getInstance().start();
 
-        // admin-server
+        // 启动一个nettyServer用于接收执行器的请求和注册
         initRpcProvider();
 
-        // start-schedule
+        // 启动一个定时任务，不断的从 xxl_job_info 表中提取将要执行的任务，更新下次执行时间的，调用JobTriggerPoolHelper类，来给执行器发送调度任务的
         JobScheduleHelper.getInstance().start();
 
         logger.info(">>>>>>>>> init xxl-job admin success.");

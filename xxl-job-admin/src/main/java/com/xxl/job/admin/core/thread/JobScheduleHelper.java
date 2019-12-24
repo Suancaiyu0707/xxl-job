@@ -28,11 +28,17 @@ public class JobScheduleHelper {
     private Thread scheduleThread;
     private Thread ringThread;
     private volatile boolean toStop = false;
+    /***
+     * 维护的是一个时间轮，key是1-60s，value是秒里对应的需要执行XXJOBINFO
+     */
     private volatile static Map<Integer, List<Integer>> ringData = new ConcurrentHashMap<>();
 
+    /***
+     * 启动当前任务
+     */
     public void start(){
 
-        // schedule thread
+        // 创建一个线程不断的进行while循环 随机睡眠 5000-6000毫秒
         scheduleThread = new Thread(new Runnable() {
             @Override
             public void run() {
@@ -56,7 +62,7 @@ public class JobScheduleHelper {
                             conn = XxlJobAdminConfig.getAdminConfig().getDataSource().getConnection();
                         }
                         conn.setAutoCommit(false);
-
+                        //获得数据库锁
                         preparedStatement = conn.prepareStatement(  "select * from XXL_JOB_LOCK where lock_name = 'schedule_lock' for update" );
                         preparedStatement.execute();
 
@@ -65,13 +71,16 @@ public class JobScheduleHelper {
                         // 1、预读10s内调度任务
                         long maxNextTime = System.currentTimeMillis() + 10000;
                         long nowTime = System.currentTimeMillis();
+                        //查询10秒内将被调度的任务
                         List<XxlJobInfo> scheduleList = XxlJobAdminConfig.getAdminConfig().getXxlJobInfoDao().scheduleJobQuery(maxNextTime);
+                        //遍历所有的在未来10s内将被执行的调度任务
                         if (scheduleList!=null && scheduleList.size()>0) {
                             // 2、推送时间轮
                             for (XxlJobInfo jobInfo: scheduleList) {
 
-                                // 时间轮刻度计算
+                                // 时间轮刻度计算 单位是s
                                 int ringSecond = -1;
+                                //如果过期的时间超过10s
                                 if (jobInfo.getTriggerNextTime() < nowTime - 10000) {   // 过期超10s：本地忽略，当前时间开始计算下次触发时间
                                     ringSecond = -1;
 
@@ -82,6 +91,7 @@ public class JobScheduleHelper {
                                                     .getTime()
                                     );
                                 } else if (jobInfo.getTriggerNextTime() < nowTime) {    // 过期10s内：立即触发一次，当前时间开始计算下次触发时间
+                                    //计算当前属于第几秒中
                                     ringSecond = (int)((nowTime/1000)%60);
 
                                     jobInfo.setTriggerLastTime(jobInfo.getTriggerNextTime());
@@ -90,7 +100,7 @@ public class JobScheduleHelper {
                                                     .getNextValidTimeAfter(new Date())
                                                     .getTime()
                                     );
-                                } else {    // 未过期：正常触发，递增计算下次触发时间
+                                } else {    // 未过期：正常触发，递增计算下次触发时间 处于第几秒中
                                     ringSecond = (int)((jobInfo.getTriggerNextTime()/1000)%60);
 
                                     jobInfo.setTriggerLastTime(jobInfo.getTriggerNextTime());
@@ -161,7 +171,9 @@ public class JobScheduleHelper {
         scheduleThread.setName("xxl-job, admin JobScheduleHelper#scheduleThread");
         scheduleThread.start();
 
-
+        /***
+         * 睡眠随机的毫秒
+         */
         // ring thread
         ringThread = new Thread(new Runnable() {
             @Override
@@ -181,13 +193,14 @@ public class JobScheduleHelper {
                     try {
                         // second data
                         List<Integer> ringItemData = new ArrayList<>();
+                        //获得当前所属的秒钟
                         int nowSecond = (int)((System.currentTimeMillis()/1000)%60);   // 避免处理耗时太长，跨过刻度；
                         if (lastSecond == -1) {
                             lastSecond = (nowSecond+59)%60;
                         }
                         for (int i = 1; i <=60; i++) {
                             int secondItem = (lastSecond+i)%60;
-
+                            //从时间轮里根据坐标获得对应时间节点里的待执行的任务
                             List<Integer> tmpData = ringData.remove(secondItem);
                             if (tmpData != null) {
                                 ringItemData.addAll(tmpData);

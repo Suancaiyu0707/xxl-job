@@ -20,6 +20,9 @@ import javax.sql.DataSource;
  */
 @Configuration
 public class XxlJobAdminConfig implements InitializingBean{
+    /**
+     * 调度中心的地址
+     */
     private static XxlJobAdminConfig adminConfig = null;
     public static XxlJobAdminConfig getAdminConfig() {
         return adminConfig;

@@ -124,12 +124,12 @@ public class XxlJobScheduler implements InitializingBean, DisposableBean {
      * @throws Exception
      */
     public static ExecutorBiz getExecutorBiz(String address) throws Exception {
-        // valid
+        // 校验执行器的地址是为空
         if (address==null || address.trim().length()==0) {
             return null;
         }
 
-        // load-cache
+        // 每隔执行器地址都对应一个ExecutorBiz，用于发送网络请求
         address = address.trim();
         ExecutorBiz executorBiz = executorBizRepository.get(address);
         if (executorBiz != null) {

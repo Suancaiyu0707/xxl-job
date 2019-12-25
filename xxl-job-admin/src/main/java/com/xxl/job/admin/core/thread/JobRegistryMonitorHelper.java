@@ -16,6 +16,8 @@ import java.util.concurrent.TimeUnit;
 /**
  * job registry instance
  * @author xuxueli 2016-10-02 19:10:24
+ * 定时任务，会每隔30s将注册的执行器信息，按照appName进行分组后，将执行器地址更新到XxlJobGroup中，
+ * 同时会移除心跳时间超过90S的注册执行器
  */
 public class JobRegistryMonitorHelper {
 	private static Logger logger = LoggerFactory.getLogger(JobRegistryMonitorHelper.class);
@@ -33,20 +35,24 @@ public class JobRegistryMonitorHelper {
 			public void run() {
 				while (!toStop) {
 					try {
-						// auto registry group
+						// 获得注册类型为自动注册的执行器
 						List<XxlJobGroup> groupList = XxlJobAdminConfig.getAdminConfig().getXxlJobGroupDao().findByAddressType(0);
 						if (groupList!=null && !groupList.isEmpty()) {
 
-							// remove dead address (admin/executor)
+							// 移除最近更新时间距离当前超过90s的，也就是心跳超时的
 							XxlJobAdminConfig.getAdminConfig().getXxlJobRegistryDao().removeDead(RegistryConfig.DEAD_TIMEOUT);
 
-							// fresh online address (admin/executor)
+							// 获得所有的最新更新时间>当前时间-30S的任务
 							HashMap<String, List<String>> appAddressMap = new HashMap<String, List<String>>();
 							List<XxlJobRegistry> list = XxlJobAdminConfig.getAdminConfig().getXxlJobRegistryDao().findAll(RegistryConfig.DEAD_TIMEOUT);
 							if (list != null) {
+								//遍历这些保持心跳连接的注册的执行器
 								for (XxlJobRegistry item: list) {
+									//判断执行器的组名称是否是executor
+									//将所有注册的执行器，按照appName进行分组
 									if (RegistryConfig.RegistType.EXECUTOR.name().equals(item.getRegistryGroup())) {
 										String appName = item.getRegistryKey();
+
 										List<String> registryList = appAddressMap.get(appName);
 										if (registryList == null) {
 											registryList = new ArrayList<String>();
@@ -60,7 +66,7 @@ public class JobRegistryMonitorHelper {
 								}
 							}
 
-							// fresh group address
+							// 遍历所有的注册类型为自动注册的执行器配置：XxlJobGroup，并将注册的执行器列表更新到XxlJobGroup里
 							for (XxlJobGroup group: groupList) {
 								List<String> registryList = appAddressMap.get(group.getAppName());
 								String addressListStr = null;

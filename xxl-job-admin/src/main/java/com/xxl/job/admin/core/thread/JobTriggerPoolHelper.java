@@ -64,10 +64,14 @@ public class JobTriggerPoolHelper {
 
     /***
      * 添加一个触发任务
-     * @param jobId jobInfo任务ID eg：6
-     * @param triggerType 任务触发类型。 eg：MANUAL
-     * @param failRetryCount 任务失败后重试次数 eg：-1
-     * @param executorShardingParam 执行器分片的参数 eg：null
+     * @param jobId jobInfo任务ID
+     *              eg：6
+     * @param triggerType 任务触发类型
+     *                    eg：MANUAL
+     * @param failRetryCount 任务失败后重试次数
+     *                       eg：-1
+     * @param executorShardingParam 执行器分片的参数
+     *                              eg：null
      * @param executorParam eg：""
      */
     public void addTrigger(final int jobId, final TriggerTypeEnum triggerType, final int failRetryCount, final String executorShardingParam, final String executorParam) {

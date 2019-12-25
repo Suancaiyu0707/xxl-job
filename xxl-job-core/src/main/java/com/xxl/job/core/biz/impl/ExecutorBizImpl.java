@@ -67,7 +67,7 @@ public class ExecutorBizImpl implements ExecutorBiz {
     }
 
     /***
-     * 调用执行相应的业务线程
+     * 开始出发调度任务
      * @param triggerParam
      * @return
      */

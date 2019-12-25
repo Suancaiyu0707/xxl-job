@@ -215,7 +215,7 @@ public class XxlJobTrigger {
     public static ReturnT<String> runExecutor(TriggerParam triggerParam, String address){
         ReturnT<String> runResult = null;
         try {
-            //获得对应的执行器
+            //获得对应的执行器的网络连接对象（默认采用的是Netty网络连接）
             ExecutorBiz executorBiz = XxlJobScheduler.getExecutorBiz(address);
             //执行调用业务线程
             runResult = executorBiz.run(triggerParam);

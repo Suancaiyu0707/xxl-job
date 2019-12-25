@@ -131,16 +131,18 @@ public class XxlJobScheduler implements InitializingBean, DisposableBean {
 
         // 每隔执行器地址都对应一个ExecutorBiz，用于发送网络请求
         address = address.trim();
+        //检查内存里是否已经维护了该执行器对应的ExecutorBiz，有则直接返回
         ExecutorBiz executorBiz = executorBizRepository.get(address);
         if (executorBiz != null) {
             return executorBiz;
         }
 
-        // set-cache
+        // 为执行器地址维护一个ExecutorBiz用于网络请求，并维护到内存里
+        //默认采用的是Netty网络连接
         executorBiz = (ExecutorBiz) new XxlRpcReferenceBean(
                 NetEnum.NETTY_HTTP, // 网络传输方式
                 Serializer.SerializeEnum.HESSIAN.getSerializer(), //序列化方式
-                CallType.SYNC, //同步/异步
+                CallType.SYNC, //同步
                 LoadBalance.ROUND,//负载均衡方式
                 ExecutorBiz.class,
                 null, //版本

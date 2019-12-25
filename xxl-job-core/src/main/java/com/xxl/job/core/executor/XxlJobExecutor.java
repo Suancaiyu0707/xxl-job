@@ -240,10 +240,23 @@ public class XxlJobExecutor  {
 
     // ---------------------- job handler repository ----------------------
     private static ConcurrentHashMap<String, IJobHandler> jobHandlerRepository = new ConcurrentHashMap<String, IJobHandler>();
+
+    /***
+     * 执行器注册的时候，会缓存到amdin项目里的内存jobHandlerRepository里
+     * @param name 执行器名称
+     * @param jobHandler 执行器
+     * @return
+     */
     public static IJobHandler registJobHandler(String name, IJobHandler jobHandler){
         logger.info(">>>>>>>>>>> xxl-job register jobhandler success, name:{}, jobHandler:{}", name, jobHandler);
         return jobHandlerRepository.put(name, jobHandler);
     }
+
+    /**
+     * 根据执行器名称获得对应的执行器
+     * @param name
+     * @return
+     */
     public static IJobHandler loadJobHandler(String name){
         return jobHandlerRepository.get(name);
     }

@@ -1,6 +1,8 @@
 package com.xuxueli.executor.sample.frameless;
 
 import com.xuxueli.executor.sample.frameless.config.FrameLessXxlJobConfig;
+import com.xuxueli.executor.sample.frameless.jobhandler.DemoJobHandler;
+import com.xxl.job.core.executor.XxlJobExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,6 +30,12 @@ public class Application {
             FrameLessXxlJobConfig.getInstance().destoryXxlJobExecutor();
         }
 
+    }
+
+
+    public static void  test(){
+        DemoJobHandler handler = new DemoJobHandler();
+        XxlJobExecutor.registJobHandler("test2",handler);
     }
 
 }

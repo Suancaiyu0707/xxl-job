@@ -76,10 +76,10 @@ public class XxlJobExecutor  {
         // 启动定时清除日志的线程
         JobLogFileCleanThread.getInstance().start(logRetentionDays);
 
-        // init TriggerCallbackThread
+        // 任务结果回调处理线程
         TriggerCallbackThread.getInstance().start();
 
-        // init executor-server
+        // 启动另一个执行器的执行线程XxlRpcProviderFactory这个类是XXl其他的开源项目，自研RPC
         port = port>0?port: NetUtil.findAvailablePort(9999);
         ip = (ip!=null&&ip.trim().length()>0)?ip: IpUtil.getIp();
         initRpcProvider(ip, port, appName, accessToken);
@@ -112,6 +112,13 @@ public class XxlJobExecutor  {
     // ---------------------- admin-client (rpc invoker) ----------------------
     private static List<AdminBiz> adminBizList;
     private static Serializer serializer;
+
+    /***
+     *  初始化 admin-client 向adminBizList字段中放入XxlRpcReferenceBean返回的代理类
+     * @param adminAddresses
+     * @param accessToken
+     * @throws Exception
+     */
     private void initAdminBizList(String adminAddresses, String accessToken) throws Exception {
         serializer = Serializer.SerializeEnum.HESSIAN.getSerializer();
         if (adminAddresses!=null && adminAddresses.trim().length()>0) {
@@ -161,6 +168,15 @@ public class XxlJobExecutor  {
     // ---------------------- executor-server (rpc provider) ----------------------
     private XxlRpcProviderFactory xxlRpcProviderFactory = null;
 
+    /**
+     * 启动另一个执行器的执行线程XxlRpcProviderFactory这个类是XXl其他的开源项目，自研RPC
+     * @param ip
+     * @param port
+     * @param appName
+     * @param accessToken
+     * @throws Exception
+     * 启动了一个以netty作为通讯模型、Hessian作为序列化方式的、ExecutorServiceRegistry作为注册逻辑实现类的服务提供端。
+     */
     private void initRpcProvider(String ip, int port, String appName, String accessToken) throws Exception {
 
         // init, provider factory

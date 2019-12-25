@@ -121,6 +121,11 @@ public class AdminBizImpl implements AdminBiz {
         }
     }
 
+    /***
+     * 执行器将自己注册到数据库里，如果注册里没有的话，则新增一条，如果数据库里有的话，则更新
+     * @param registryParam
+     * @return
+     */
     @Override
     public ReturnT<String> registry(RegistryParam registryParam) {
         int ret = xxlJobRegistryDao.registryUpdate(registryParam.getRegistGroup(), registryParam.getRegistryKey(), registryParam.getRegistryValue());
@@ -129,7 +134,11 @@ public class AdminBizImpl implements AdminBiz {
         }
         return ReturnT.SUCCESS;
     }
-
+    /***
+     * 执行器将自己从数据库里移除，删除数据库里的注册记录
+     * @param registryParam
+     * @return
+     */
     @Override
     public ReturnT<String> registryRemove(RegistryParam registryParam) {
         xxlJobRegistryDao.registryDelete(registryParam.getRegistGroup(), registryParam.getRegistryKey(), registryParam.getRegistryValue());

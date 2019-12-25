@@ -50,7 +50,7 @@ public class JobLogController {
 		// 执行器列表
 		List<XxlJobGroup> jobGroupList_all =  xxlJobGroupDao.findAll();
 
-		// filter group
+		// 过滤出用户有权限的执行器列表
 		List<XxlJobGroup> jobGroupList = JobInfoController.filterJobGroupByRole(request, jobGroupList_all);
 		if (jobGroupList==null || jobGroupList.size()==0) {
 			throw new XxlJobException(I18nUtil.getString("jobgroup_empty"));
@@ -59,7 +59,7 @@ public class JobLogController {
 		model.addAttribute("JobGroupList", jobGroupList);
 
 		// 任务
-		if (jobId > 0) {
+		if (jobId > 0) {//如果大于0，则表示查某一个任务的信息
 			XxlJobInfo jobInfo = xxlJobInfoDao.loadById(jobId);
 			if (jobInfo == null) {
 				throw new RuntimeException(I18nUtil.getString("jobinfo_field_id") + I18nUtil.getString("system_unvalid"));
@@ -80,7 +80,19 @@ public class JobLogController {
 		List<XxlJobInfo> list = xxlJobInfoDao.getJobsByGroup(jobGroup);
 		return new ReturnT<List<XxlJobInfo>>(list);
 	}
-	
+	//
+
+	/***
+	 * 查询执行器执行的日志
+	 * @param request
+	 * @param start
+	 * @param length
+	 * @param jobGroup 如果不为空，则查询某个执行器的执行日志
+	 * @param jobId 如果不为空，则查询某个指定任务的执行日志
+	 * @param logStatus 日志状态
+	 * @param filterTime
+	 * @return
+	 */
 	@RequestMapping("/pageList")
 	@ResponseBody
 	public Map<String, Object> pageList(HttpServletRequest request,
@@ -88,10 +100,10 @@ public class JobLogController {
 										@RequestParam(required = false, defaultValue = "10") int length,
 										int jobGroup, int jobId, int logStatus, String filterTime) {
 
-		// valid permission
+		// 检查用户是否持有执行器的权限
 		JobInfoController.validPermission(request, jobGroup);	// 仅管理员支持查询全部；普通用户仅支持查询有权限的 jobGroup
 		
-		// parse param
+		//
 		Date triggerTimeStart = null;
 		Date triggerTimeEnd = null;
 		if (filterTime!=null && filterTime.trim().length()>0) {
@@ -102,7 +114,7 @@ public class JobLogController {
 			}
 		}
 		
-		// page query
+		// 根据时间分页查询某个执行器的执行的日志
 		List<XxlJobLog> list = xxlJobLogDao.pageList(start, length, jobGroup, jobId, triggerTimeStart, triggerTimeEnd, logStatus);
 		int list_count = xxlJobLogDao.pageListCount(start, length, jobGroup, jobId, triggerTimeStart, triggerTimeEnd, logStatus);
 		
@@ -113,7 +125,7 @@ public class JobLogController {
 	    maps.put("data", list);  					// 分页列表
 		return maps;
 	}
-
+	//查询某个执行日志的详情
 	@RequestMapping("/logDetailPage")
 	public String logDetailPage(int id, Model model){
 

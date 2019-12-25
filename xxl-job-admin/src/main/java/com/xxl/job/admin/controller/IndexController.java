@@ -23,6 +23,7 @@ import java.util.Map;
 /**
  * index controller
  * @author xuxueli 2015-12-19 16:13:16
+ * 首页控制器
  */
 @Controller
 public class IndexController {
@@ -48,7 +49,14 @@ public class IndexController {
         ReturnT<Map<String, Object>> chartInfo = xxlJobService.chartInfo(startDate, endDate);
         return chartInfo;
     }
-	
+
+	/***
+	 *
+	 * 判断用户是否已登录，未登录的话跳转到登录页面
+	 * @param request
+	 * @param response
+	 * @return
+	 */
 	@RequestMapping("/toLogin")
 	@PermissionLimit(limit=false)
 	public String toLogin(HttpServletRequest request, HttpServletResponse response) {
@@ -57,7 +65,16 @@ public class IndexController {
 		}
 		return "login";
 	}
-	
+
+	/***
+	 * 用户登录
+	 * @param request
+	 * @param response
+	 * @param userName
+	 * @param password
+	 * @param ifRemember
+	 * @return
+	 */
 	@RequestMapping(value="login", method=RequestMethod.POST)
 	@ResponseBody
 	@PermissionLimit(limit=false)
@@ -65,7 +82,13 @@ public class IndexController {
 		boolean ifRem = (ifRemember!=null && ifRemember.trim().length()>0 && "on".equals(ifRemember))?true:false;
 		return loginService.login(request, response, userName, password, ifRem);
 	}
-	
+
+	/***
+	 * 退出登录
+	 * @param request
+	 * @param response
+	 * @return
+	 */
 	@RequestMapping(value="logout", method=RequestMethod.POST)
 	@ResponseBody
 	@PermissionLimit(limit=false)

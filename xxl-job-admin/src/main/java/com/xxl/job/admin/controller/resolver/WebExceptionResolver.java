@@ -19,6 +19,8 @@ import java.io.IOException;
  * common exception resolver
  *
  * @author xuxueli 2016-1-6 19:22:18
+ *
+ *  通用异常处理类
  */
 @Component
 public class WebExceptionResolver implements HandlerExceptionResolver {

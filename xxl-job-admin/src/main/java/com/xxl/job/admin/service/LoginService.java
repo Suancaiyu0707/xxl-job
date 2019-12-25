@@ -78,7 +78,7 @@ public class LoginService {
 
     /**
      * logout
-     *
+     *  判断用户是否已登录，从cookie中获取用户信息
      * @param request
      * @return
      */

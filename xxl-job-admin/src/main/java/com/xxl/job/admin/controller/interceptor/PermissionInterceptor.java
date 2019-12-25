@@ -16,6 +16,8 @@ import javax.servlet.http.HttpServletResponse;
  * 权限拦截
  *
  * @author xuxueli 2015-12-12 18:09:04
+ *
+ * 对所有的请求都会做拦截
  */
 @Component
 public class PermissionInterceptor extends HandlerInterceptorAdapter {
@@ -41,6 +43,7 @@ public class PermissionInterceptor extends HandlerInterceptorAdapter {
 		}
 
 		if (needLogin) {
+			// 判断用户是否已登录，从cookie中获取用户信息
 			XxlJobUser loginUser = loginService.ifLogin(request, response);
 			if (loginUser == null) {
 				response.sendRedirect(request.getContextPath() + "/toLogin");

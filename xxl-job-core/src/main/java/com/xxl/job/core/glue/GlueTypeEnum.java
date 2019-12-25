@@ -6,12 +6,19 @@ package com.xxl.job.core.glue;
  */
 public enum GlueTypeEnum {
 
+    //使用Bean的方式
     BEAN("BEAN", false, null, null),
+    //自定义java代码
     GLUE_GROOVY("GLUE(Java)", false, null, null),
+    //自定义shell脚本
     GLUE_SHELL("GLUE(Shell)", true, "bash", ".sh"),
+    //
     GLUE_PYTHON("GLUE(Python)", true, "python", ".py"),
+    //
     GLUE_PHP("GLUE(PHP)", true, "php", ".php"),
+    //
     GLUE_NODEJS("GLUE(Nodejs)", true, "node", ".js"),
+    //
     GLUE_POWERSHELL("GLUE(PowerShell)", true, "powershell ", ".ps1");
 
     private String desc;

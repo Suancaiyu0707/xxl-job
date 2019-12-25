@@ -9,7 +9,7 @@ import com.xxl.job.admin.core.util.I18nUtil;
  * 任务触发的类型
  */
 public enum TriggerTypeEnum {
-    //正常执行
+    //页面手动执行
     MANUAL(I18nUtil.getString("jobconf_trigger_type_manual")),
     //定时触发执行
     CRON(I18nUtil.getString("jobconf_trigger_type_cron")),

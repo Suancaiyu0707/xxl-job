@@ -64,19 +64,19 @@ public class JobTriggerPoolHelper {
 
     /***
      * 添加一个触发任务
-     * @param jobId eg：6
-     * @param triggerType eg：MANUAL
-     * @param failRetryCount eg：-1
-     * @param executorShardingParam eg：null
+     * @param jobId jobInfo任务ID eg：6
+     * @param triggerType 任务触发类型。 eg：MANUAL
+     * @param failRetryCount 任务失败后重试次数 eg：-1
+     * @param executorShardingParam 执行器分片的参数 eg：null
      * @param executorParam eg：""
      */
     public void addTrigger(final int jobId, final TriggerTypeEnum triggerType, final int failRetryCount, final String executorShardingParam, final String executorParam) {
 
-        // 默认选择快的线程池
+        // 默认初始化采用执行快的线程池
         ThreadPoolExecutor triggerPool_ = fastTriggerPool;
-        //检查当前jobInfo已超时的次数(这里的超时是指执行时间>500)
+        //检查当前jobInfo在最近一分钟内执行的时间超过300ms的次数（超过300ms就被认为是慢执行）
         AtomicInteger jobTimeoutCount = jobTimeoutCountMap.get(jobId);
-        //如果一分钟内，超时的次数>10，则采用慢线程池
+        //如果一分钟内，执行时间超过300ms的次数>10，则采用慢线程池
         if (jobTimeoutCount!=null && jobTimeoutCount.get() > 10) {      // job-timeout 10 times in 1 min
             triggerPool_ = slowTriggerPool;
         }
@@ -132,9 +132,9 @@ public class JobTriggerPoolHelper {
     // ---------------------- helper ----------------------
     //任务触发器工具类
     private static JobTriggerPoolHelper helper = new JobTriggerPoolHelper();
-
     /**
-     * @param jobId jobInfo的主键 eg：6
+     * 执行触发某个调度任务
+     * @param jobId jobInfo任务ID eg：6
      * @param triggerType eg: MANAUL
      * @param failRetryCount eg：-1
      * 			>=0: use this param

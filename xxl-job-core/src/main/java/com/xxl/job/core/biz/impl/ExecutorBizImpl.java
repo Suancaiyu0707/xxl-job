@@ -82,8 +82,8 @@ public class ExecutorBizImpl implements ExecutorBiz {
         // valid：jobHandler + jobThread
         //获得Glue类型
         GlueTypeEnum glueTypeEnum = GlueTypeEnum.match(triggerParam.getGlueType());
-        if (GlueTypeEnum.BEAN == glueTypeEnum) {//如果是BEAN类型
-
+        if (GlueTypeEnum.BEAN == glueTypeEnum) {//如果是BEAN类型，则根据执行器名称查找注册的 IJobHandler
+            //执行器在启动的时候会注册到admin上，并被保存到内存里
             // 根据执行器名称，从本地内存里里获取 执行器绑定的 IJobHandler
             IJobHandler newJobHandler = XxlJobExecutor.loadJobHandler(triggerParam.getExecutorHandler());
 

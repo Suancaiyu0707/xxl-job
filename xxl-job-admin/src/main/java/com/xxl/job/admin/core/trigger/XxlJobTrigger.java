@@ -28,8 +28,8 @@ public class XxlJobTrigger {
     /**
      * trigger job
      *
-     * @param jobId eg：6
-     * @param triggerType eg：NANUAL
+     * @param jobId 执行任务的jobinfo的id eg：6
+     * @param triggerType 触发任务的类型 eg：NANUAL
      * @param failRetryCount 失败重试的次数 eg： -1
      * 			>=0: use this param
      * 			<0: use param from job info config
@@ -39,7 +39,7 @@ public class XxlJobTrigger {
      *          not null: cover job param
      */
     public static void trigger(int jobId, TriggerTypeEnum triggerType, int failRetryCount, String executorShardingParam, String executorParam) {
-        // 查询 JobInfo
+        // 校验任务信息是否存在
         XxlJobInfo jobInfo = XxlJobAdminConfig.getAdminConfig().getXxlJobInfoDao().loadById(jobId);
         if (jobInfo == null) {
             logger.warn(">>>>>>>>>>>> trigger fail, jobId invalid，jobId={}", jobId);
@@ -51,7 +51,7 @@ public class XxlJobTrigger {
         }
         //获得配置的失败重试的次数，所以这个失败重试次数实时生效
         int finalFailRetryCount = failRetryCount>=0?failRetryCount:jobInfo.getExecutorFailRetryCount();
-        //获得执行器的信息
+        // 获得调度任务对应的额执行器(会调用对应的执行器)
         XxlJobGroup group = XxlJobAdminConfig.getAdminConfig().getXxlJobGroupDao().load(jobInfo.getJobGroup());
         //获得分片的参数规则：根据'/'进行分割
         // sharding param
@@ -136,10 +136,10 @@ public class XxlJobTrigger {
         triggerParam.setBroadcastIndex(index); // 分片的索引
         triggerParam.setBroadcastTotal(total); // 分片总数
 
-        // 3、init address
+        // 3、初始化执行器地址
         String address = null;
         ReturnT<String> routeAddressResult = null;
-        //获得执行器的注册地址类标，每个执行器都有地址列表
+        //获得执行器的注册地址列表，每个执行器都有地址列表
         if (group.getRegistryList()!=null && !group.getRegistryList().isEmpty()) {
             //如果是广播策略
             if (ExecutorRouteStrategyEnum.SHARDING_BROADCAST == executorRouteStrategyEnum) {

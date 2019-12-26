@@ -16,6 +16,21 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * @author xuxueli 2019-05-21
+ * 这个类主要启动了两个线程：scheduleThread和ringThread线程
+ *      scheduleThread：定时500-1000毫秒执行一次。
+ *          1、查询表Xxl_Job_Info表，只查询最近10s内要执行的任务(也就是下次触发时间trigger_next_time<currentTime+10s)，包括trigger_next_time<currentTime
+ *          2、遍历第1步查询出来的列表：
+ *              如果下次触发时间trigger_next_time< currentTime-10s，也就是距离本该触发的时间超过了10s，则忽略，并重新记录下一次触发的时间。
+ *              如果下次触发时间currentTime-10s<trigger_next_time< currentTime，则立马触发一次，
+ *                  也就是把当前立马要执行的任务放到当前时刻的时间轮里，并计算下一次触发的时间。
+ *              如果下次触发时间trigger_next_time> currentTime，则计算将要触发任务所处的时间轮，并计算下一次触发的时间
+ *          3、通过第2步，会把10s内要执行的任务都放到它们在时间轮本该所处的位置。并更新任务下一次触发的时间节点
+ *      ringThread：每隔1s中执行一次(因为时间轮的最小单位是1s)
+ *          1、获得当前所处的秒钟 nowSecond，也就是映射时间轮里的索引.
+ *          2、遍历时间轮ringData，从上一次遍历的时间节点索引lastSecond继续往后遍历，直到遍历到当前时间节点nowSecond暂停(因为后面的还没到执行的时间点)，遍历过程中遇到需要执行的任务都从ringData中取出来并准备执行：
+ *              比如上一次调度到时间轮里的第25s(也就是lastSecond=25)。那么就继续从25s开始遍历，直到索引位置为nowSecond=35s的时间节点则暂停(因为当前才是1分钟内的第35s，那35s的时间节点之后的都还没到触发调度的点)
+ *          3、每次遍历完后都记录已触发的时间节点刻度到lastSecond（set lastSecond = 35）
+ *          4、依次触发此时遍历的需要执行的调度任务
  */
 public class JobScheduleHelper {
     private static Logger logger = LoggerFactory.getLogger(JobScheduleHelper.class);
@@ -82,19 +97,23 @@ public class JobScheduleHelper {
                                 int ringSecond = -1;
                                 //如果过期的时间超过10s
                                 if (jobInfo.getTriggerNextTime() < nowTime - 10000) {   // 过期超10s：本地忽略，当前时间开始计算下次触发时间
+                                    //如果下次触发时间trigger_next_time< currentTime-10s，也就是距离本该触发的时间超过了10s，则放弃此次任务
                                     ringSecond = -1;
 
                                     jobInfo.setTriggerLastTime(jobInfo.getTriggerNextTime());
+                                    //计算下一次触发的时间
                                     jobInfo.setTriggerNextTime(
                                             new CronExpression(jobInfo.getJobCron())
                                                     .getNextValidTimeAfter(new Date())
                                                     .getTime()
                                     );
                                 } else if (jobInfo.getTriggerNextTime() < nowTime) {    // 过期10s内：立即触发一次，当前时间开始计算下次触发时间
-                                    //计算当前属于第几秒中
+                                    //如果下次触发时间currentTime-10s<trigger_next_time< currentTime，则立马触发一次
+                                    //计算当前属于第几秒中,把当前立马要执行的任务放到当前时刻的时间轮里
                                     ringSecond = (int)((nowTime/1000)%60);
 
                                     jobInfo.setTriggerLastTime(jobInfo.getTriggerNextTime());
+                                    //计算下一次触发的时间
                                     jobInfo.setTriggerNextTime(
                                             new CronExpression(jobInfo.getJobCron())
                                                     .getNextValidTimeAfter(new Date())
@@ -104,6 +123,7 @@ public class JobScheduleHelper {
                                     ringSecond = (int)((jobInfo.getTriggerNextTime()/1000)%60);
 
                                     jobInfo.setTriggerLastTime(jobInfo.getTriggerNextTime());
+                                    //计算下一次触发的时间
                                     jobInfo.setTriggerNextTime(
                                             new CronExpression(jobInfo.getJobCron())
                                                     .getNextValidTimeAfter(new Date(jobInfo.getTriggerNextTime()))
@@ -193,11 +213,13 @@ public class JobScheduleHelper {
                     try {
                         // second data
                         List<Integer> ringItemData = new ArrayList<>();
-                        //获得当前所属的秒钟
+                        //获得当前所属的秒钟：比如当前是 1分钟内的第35s
                         int nowSecond = (int)((System.currentTimeMillis()/1000)%60);   // 避免处理耗时太长，跨过刻度；
                         if (lastSecond == -1) {
                             lastSecond = (nowSecond+59)%60;
                         }
+                        //遍历时间轮ringData，从上一次遍历的时间节点索引lastSecond继续往后遍历，直到遍历到当前时间节点nowSecond暂停(因为后面的还没到执行的时间点)
+                        //比如上次调度到时间轮里的第28s。那么就继续从25s开始遍历，直到索引位置为35s的时间节点则暂停(因为当前才是1分钟内的第35s，那35s的时间节点之后的都还没到触发调度的点)
                         for (int i = 1; i <=60; i++) {
                             int secondItem = (lastSecond+i)%60;
                             //从时间轮里根据坐标获得对应时间节点里的待执行的任务

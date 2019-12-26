@@ -20,7 +20,6 @@ public class ExecutorRegistryThread {
     public static ExecutorRegistryThread getInstance(){
         return instance;
     }
-
     private Thread registryThread;
     private volatile boolean toStop = false;
     public void start(final String appName, final String address){

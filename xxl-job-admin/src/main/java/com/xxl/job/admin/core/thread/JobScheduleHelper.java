@@ -232,6 +232,7 @@ public class JobScheduleHelper {
                                 break;
                             }
                         }
+                        //记录当前调度的时间轮中的刻度，后面就从当前刻度继续往后遍历
                         lastSecond = nowSecond;
 
 

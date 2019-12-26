@@ -28,12 +28,16 @@ public class XxlJobTrigger {
     /**
      * trigger job
      *
-     * @param jobId 执行任务的jobinfo的id eg：6
-     * @param triggerType 触发任务的类型 eg：NANUAL
-     * @param failRetryCount 失败重试的次数 eg： -1
+     * @param jobId 执行任务的jobinfo的id
+     *              eg：6
+     * @param triggerType 触发任务的类型
+     *                    eg：MANUAL
+     * @param failRetryCount 失败重试的次数
+     *                       eg： -1
      * 			>=0: use this param
      * 			<0: use param from job info config
-     * @param executorShardingParam eg：null
+     * @param executorShardingParam 分片的参数
+     *                  eg：null
      * @param executorParam eg：""
      *          null: use job param
      *          not null: cover job param
@@ -97,12 +101,12 @@ public class XxlJobTrigger {
 
     /**
      * 处理触发任务
-     * @param group                     job group, registry list may be empty
+     * @param group      执行器信息
      * @param jobInfo   任务信息
      * @param finalFailRetryCount 失败重试的次数
      * @param triggerType     触发类型
-     * @param index                     分片的索引
-     * @param total                     分片的总数
+     * @param index      分片的索引
+     * @param total      分片的总数
      */
     private static void processTrigger(XxlJobGroup group, XxlJobInfo jobInfo, int finalFailRetryCount, TriggerTypeEnum triggerType, int index, int total){
 
@@ -139,9 +143,11 @@ public class XxlJobTrigger {
         // 3、初始化执行器地址
         String address = null;
         ReturnT<String> routeAddressResult = null;
-        //获得执行器的注册地址列表，每个执行器都有地址列表
+        //获得执行器的注册地址列表，每个执行器都有地址列表（xxl-job-group表中地址）
+        //注意，如果这个执行器是自动注册的话，则地址是用客户端执行器注册保存的。客户端执行器在注册完保存到xxlJobRegistry之后，
+        //JobRegistryMonitorHelper的线程会每隔30s把xxlJobRegistry里的注册的执行器信息，按照appName分组后，更新到xxl-job-group表中
         if (group.getRegistryList()!=null && !group.getRegistryList().isEmpty()) {
-            //如果是广播策略
+            //如果是分片广播策略
             if (ExecutorRouteStrategyEnum.SHARDING_BROADCAST == executorRouteStrategyEnum) {
                 //根据分片索引，从执行器列表中获得对应的执行器地址
                 if (index < group.getRegistryList().size()) {
@@ -149,7 +155,7 @@ public class XxlJobTrigger {
                 } else {
                     address = group.getRegistryList().get(0);
                 }
-            } else {//如果不是广播路由
+            } else {//如果不是分片广播
                 //根据触发参数和执行器列表，根据具体的策略方式，获得对应的路由地址
                 routeAddressResult = executorRouteStrategyEnum.getRouter().route(triggerParam, group.getRegistryList());
                 if (routeAddressResult.getCode() == ReturnT.SUCCESS_CODE) {
@@ -203,13 +209,13 @@ public class XxlJobTrigger {
     /**
      * 执行触发的任务
      * @param triggerParam
-     * @param address 执行器的地址：192.168.0.103:9999
+     * @param address 被选中的执行器的地址：192.168.0.103:9999
      * @return
      */
     public static ReturnT<String> runExecutor(TriggerParam triggerParam, String address){
         ReturnT<String> runResult = null;
         try {
-            //获得对应的业务执行器
+            //获得对应的执行器的网络连接对象（默认采用的是Netty网络连接）
             ExecutorBiz executorBiz = XxlJobScheduler.getExecutorBiz(address);
             //执行调用业务线程
             runResult = executorBiz.run(triggerParam);

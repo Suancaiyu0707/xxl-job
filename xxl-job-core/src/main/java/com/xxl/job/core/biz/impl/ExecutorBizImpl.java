@@ -67,7 +67,8 @@ public class ExecutorBizImpl implements ExecutorBiz {
     }
 
     /***
-     * 调用执行相应的业务线程
+     * 开始调度任务（本质是把它放到队列里，有单独的线程从队列里拿出并进行触发）
+     * 这边我们会发现，每个jobInfo会对应一个单独的JobThread
      * @param triggerParam
      * @return
      */

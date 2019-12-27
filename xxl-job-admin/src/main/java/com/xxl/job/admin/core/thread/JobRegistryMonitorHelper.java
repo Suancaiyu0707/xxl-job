@@ -44,7 +44,7 @@ public class JobRegistryMonitorHelper {
 							// 移除最近更新时间距离当前超过90s的，也就是心跳超时的
 							XxlJobAdminConfig.getAdminConfig().getXxlJobRegistryDao().removeDead(RegistryConfig.DEAD_TIMEOUT);
 
-							// 获得所有的最新更新时间>当前时间-30S的任务
+							// 获得所有的最新更新时间>当前时间-90S的任务
 							HashMap<String, List<String>> appAddressMap = new HashMap<String, List<String>>();
 							List<XxlJobRegistry> list = XxlJobAdminConfig.getAdminConfig().getXxlJobRegistryDao().findAll(RegistryConfig.DEAD_TIMEOUT);
 							if (list != null) {

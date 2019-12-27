@@ -9,15 +9,16 @@ import java.util.List;
 
 /**
  * Created by xuxueli on 17/3/10.
+ * 路由选择器的抽象类，所有的子类必须实现route，路由选择一个执行器
  */
 public abstract class ExecutorRouter {
     protected static Logger logger = LoggerFactory.getLogger(ExecutorRouter.class);
 
-    /**
-     * route address
+    /***
      *
+     * @param triggerParam
      * @param addressList
-     * @return  ReturnT.content=address
+     * @return
      */
     public abstract ReturnT<String> route(TriggerParam triggerParam, List<String> addressList);
 

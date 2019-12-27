@@ -18,8 +18,8 @@ import java.util.concurrent.TimeUnit;
  * @author xuxueli 2016-10-02 19:10:24
  * 维护一个定时线程，每隔30s轮询一次xxl_job_regisry表。xxl_job_regisry主要是维护了注册到admin的执行器列表。
  * 1、剔除心跳超时的执行器列表(最近心跳时间超过90s的)
- * 2、查询最近心跳时间超过30s内的存活的执行器列表，并按照registry_group进行分组
- * 3、根据分组后的执行器地址列表更新xxl_job_group的addressList。（这一步是根据xxl_job_group的appName和registry_group进行映射）
+ * 2、查询最近心跳时间超过90s内的存活的执行器列表，并按照registry_key进行分组
+ * 3、根据分组后的执行器地址列表更新xxl_job_group的addressList。（这一步是根据xxl_job_group的appName和registry_key进行映射）
  */
 public class JobRegistryMonitorHelper {
 	private static Logger logger = LoggerFactory.getLogger(JobRegistryMonitorHelper.class);

@@ -28,7 +28,6 @@ public class JobRegistryMonitorHelper {
 	public static JobRegistryMonitorHelper getInstance(){
 		return instance;
 	}
-
 	private Thread registryThread;
 	private volatile boolean toStop = false;
 	public void start(){

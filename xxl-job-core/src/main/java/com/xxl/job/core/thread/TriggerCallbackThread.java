@@ -20,6 +20,7 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Created by xuxueli on 16/7/22.
+ * 启动针对任务结果回调处理线程
  */
 public class TriggerCallbackThread {
     private static Logger logger = LoggerFactory.getLogger(TriggerCallbackThread.class);
@@ -46,7 +47,8 @@ public class TriggerCallbackThread {
     private volatile boolean toStop = false;
     public void start() {
 
-        // valid
+        // 检查是否配置了服务端的地址：
+        // eg：http://127.0.0.1:8080/xxl-job-admin/api
         if (XxlJobExecutor.getAdminBizList() == null) {
             logger.warn(">>>>>>>>>>> xxl-job, executor callback config fail, adminAddresses is null.");
             return;

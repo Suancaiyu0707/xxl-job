@@ -16,6 +16,7 @@ import java.util.concurrent.TimeUnit;
  * job file clean thread
  *
  * @author xuxueli 2017-12-29 16:23:43
+ * 启动定时清除日志文件的线程
  */
 public class JobLogFileCleanThread {
     private static Logger logger = LoggerFactory.getLogger(JobLogFileCleanThread.class);

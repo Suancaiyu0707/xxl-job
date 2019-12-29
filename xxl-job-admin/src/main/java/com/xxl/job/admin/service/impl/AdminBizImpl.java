@@ -122,8 +122,9 @@ public class AdminBizImpl implements AdminBiz {
     }
 
     /***
+     * 执行器在启动时候会通过http发送注册的请求
      * 执行器将自己注册到数据库里，如果注册里没有的话，则新增一条，如果数据库里有的话，则更新
-     * @param registryParam
+     * @param registryParam 注册信息eg：RegistryParam{registGroup='EXECUTOR', registryKey='xxl-job-executor-sample-frameless', registryValue='192.168.0.103:9996'}
      * @return
      */
     @Override

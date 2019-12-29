@@ -64,24 +64,34 @@ public class XxlJobExecutor  {
 
 
     // ---------------------- start + stop ----------------------
+
+    /***
+     *
+     * @throws Exception
+     * 1、初始化日志文件的配置（默认/data/applogs/xxl-job/jobhandler"）
+     * 2、向配置的调度中心admin地址发送一个注册执行器的restful请求，用于初始化调用调度中心的client列表
+     * 3、启动定时清除日志的线程
+     * 4、初始化执行器的服务
+     * 5、初始化执行器服务，一个以Netty为网络传输的方式的RPC调用接口，用于接收调度中心的回调请求
+     */
     public void start() throws Exception {
 
-        // 初始化日志文件的配置
+        // 初始化日志文件的配置（默认/data/applogs/xxl-job/jobhandler"）
         XxlJobFileAppender.initLogPath(logPath);
 
-        // init invoker, admin-client
+        // 向配置的调度中心admin地址发送一个注册执行器的restful请求：http://127.0.0.1:8080/xxl-job-admin/api
         initAdminBizList(adminAddresses, accessToken);
 
 
         // 启动定时清除日志的线程
         JobLogFileCleanThread.getInstance().start(logRetentionDays);
 
-        // 任务结果回调处理线程
         TriggerCallbackThread.getInstance().start();
 
         // 启动另一个执行器的执行线程XxlRpcProviderFactory这个类是XXl其他的开源项目，自研RPC
         port = port>0?port: NetUtil.findAvailablePort(9999);
         ip = (ip!=null&&ip.trim().length()>0)?ip: IpUtil.getIp();
+        //初始化一个以Netty为网络传输的方式的RPC调用接口，用于接收调度中心的回调请求
         initRpcProvider(ip, port, appName, accessToken);
     }
     public void destroy(){
@@ -115,7 +125,7 @@ public class XxlJobExecutor  {
 
     /***
      *  初始化 admin-client 向adminBizList字段中放入XxlRpcReferenceBean返回的代理类
-     * @param adminAddresses
+     * @param adminAddresses 调度中心的地址(这里是xxl-job的admin)
      * @param accessToken
      * @throws Exception
      */
@@ -124,7 +134,7 @@ public class XxlJobExecutor  {
         if (adminAddresses!=null && adminAddresses.trim().length()>0) {
             for (String address: adminAddresses.trim().split(",")) {
                 if (address!=null && address.trim().length()>0) {
-
+                    //http://127.0.0.1:8080/xxl-job-admin/api
                     String addressUrl = address.concat(AdminBiz.MAPPING);
 
                     AdminBiz adminBiz = (AdminBiz) new XxlRpcReferenceBean(
@@ -179,16 +189,16 @@ public class XxlJobExecutor  {
      */
     private void initRpcProvider(String ip, int port, String appName, String accessToken) throws Exception {
 
-        // init, provider factory
+        // init, provider factory 初始化提供者工厂
         String address = IpUtil.getIpPort(ip, port);
         Map<String, String> serviceRegistryParam = new HashMap<String, String>();
         serviceRegistryParam.put("appName", appName);
         serviceRegistryParam.put("address", address);
-
+        // 初始化提供者工厂
         xxlRpcProviderFactory = new XxlRpcProviderFactory();
         xxlRpcProviderFactory.initConfig(NetEnum.NETTY_HTTP, Serializer.SerializeEnum.HESSIAN.getSerializer(), ip, port, accessToken, ExecutorServiceRegistry.class, serviceRegistryParam);
 
-        // add services
+        // 增加服务接口和服务实现,供给调用中心调用
         xxlRpcProviderFactory.addService(ExecutorBiz.class.getName(), null, new ExecutorBizImpl());
 
         // start

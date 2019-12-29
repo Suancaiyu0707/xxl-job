@@ -30,27 +30,42 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * @author xuxueli 2018-10-28 00:18:17
+ *
+ * XxlJobScheduler在服务启动后，会为实例初始化完成后，调用afterPropertiesSet方法，进行一些准备工作：
+ * 1、初始化国际化标准 遍历每个阻塞策略，将title设置为中文（意义不大，只是为了可视化清晰）
+ * 2、启动一个线程，每隔30s根据会根据注册表xxl_job_resgiry里的地址列表，自动更新执行器xxl_job_group中自动注册的地址列表。
+ * 3、启动一个线程，定时检查检查最近失败的xxlJobLog日志，并根据失败信息以及任务配置，判断是否需要重试或者发送邮件。
+ * 4、服务会初始化一个基于Netty网络传输的的RPC服务提供者，该提供者主要是用于接收执行器的请求和注册。并把注册信息维护到xxl_job_resgiry表中。
+ *      传输方式：netty
+ *      系列化方式：hessian
+ * 5、启动一个线程，定时的检查xxl_job_info表，把最近10S内将调度的任务提取出来，并交由JobTriggerPoolHelper进行触发。
  */
 @Configuration
 public class XxlJobScheduler implements InitializingBean, DisposableBean {
     private static final Logger logger = LoggerFactory.getLogger(XxlJobScheduler.class);
 
     /***
+     * XxlJobScheduler实例化完成后调用
      * 实例初始化完成后，会调用该方法
      * @throws Exception
+     * 1、初始化国际化标准 遍历每个阻塞策略，将title设置为中文（意义不大，只是为了可视化清晰）
+     * 2、启动一个线程，每隔30s根据会根据注册表xxl_job_resgiry里的地址列表，自动更新执行器xxl_job_group中自动注册的地址列表。
+     * 3、启动一个线程，定时检查检查最近失败的xxlJobLog日志，并根据失败信息以及任务配置，判断是否需要重试或者发送邮件。
+     * 4、服务会初始化一个基于Netty网络传输的的RPC服务提供者，该提供者主要是用于接收执行器的请求和注册。并把注册信息维护到xxl_job_resgiry表中。
+     * 5、启动一个线程，定时的检查xxl_job_info表，把最近10S内将调度的任务提取出来，并交由JobTriggerPoolHelper进行触发。
      */
     @Override
     public void afterPropertiesSet() throws Exception {
-        // init i18n 初始化国际化标准
+        // init i18n 初始化国际化标准 遍历每个阻塞策略，将title设置为中文
         initI18n();
 
-        // 任务注册的监控启动
+        // 启动一个线程定时每隔30s根据注册表更新执行器信息
         JobRegistryMonitorHelper.getInstance().start();
 
-        // 任务失败监控的启动
+        // 启动一个线程，检查最近失败的xxlJobLog日志，并根据失败信息以及任务配置，判断是否需要重试或者发送邮件
         JobFailMonitorHelper.getInstance().start();
 
-        // 启动一个nettyServer用于接收执行器的请求和注册
+        // 初始化一个基于Netty的RPC服务提供者，该提供者主要是用于接收执行器的请求和注册
         initRpcProvider();
 
         // 启动一个定时任务，不断的从 xxl_job_info 表中提取将要执行的任务，更新下次执行时间的，调用JobTriggerPoolHelper类，来给执行器发送调度任务的
@@ -79,7 +94,7 @@ public class XxlJobScheduler implements InitializingBean, DisposableBean {
     }
 
     // ---------------------- I18n ----------------------
-
+    //遍历每个阻塞策略，将title设置为中文
     private void initI18n(){
         for (ExecutorBlockStrategyEnum item:ExecutorBlockStrategyEnum.values()) {
             item.setTitle(I18nUtil.getString("jobconf_block_".concat(item.name())));
@@ -88,6 +103,16 @@ public class XxlJobScheduler implements InitializingBean, DisposableBean {
 
     // ---------------------- admin rpc provider (no server version) ----------------------
     private static ServletServerHandler servletServerHandler;
+
+    /***
+     * 初始化一个基于Netty的RPC服务提供者，该提供者主要是用于接收执行器的请求和注册
+     * 1、对XxlRpcProviderFactory进行初始化配置：
+     *      传输方式：netty
+     *      系列化方式：hessian
+     * 2、指定用于处理该NettyServer接收到的内容的类，并绑定处理请求信息的实例
+     * 3、根据xxlRpcProviderFactory封装servletServerHandler，这样当客户端通过netty网络请求过来时，
+     *  会有servletServerHandler的handle()调用AdminBiz的方法
+     */
     private void initRpcProvider(){
         // init
         XxlRpcProviderFactory xxlRpcProviderFactory = new XxlRpcProviderFactory();
@@ -101,7 +126,11 @@ public class XxlJobScheduler implements InitializingBean, DisposableBean {
                 null);
 
         // add services
-        xxlRpcProviderFactory.addService(AdminBiz.class.getName(), null, XxlJobAdminConfig.getAdminConfig().getAdminBiz());
+        xxlRpcProviderFactory
+                .addService(
+                        AdminBiz.class.getName(),
+                        null, XxlJobAdminConfig.getAdminConfig()
+                                .getAdminBiz());
 
         // servlet handler
         servletServerHandler = new ServletServerHandler(xxlRpcProviderFactory);
@@ -109,6 +138,14 @@ public class XxlJobScheduler implements InitializingBean, DisposableBean {
     private void stopRpcProvider() throws Exception {
         XxlRpcInvokerFactory.getInstance().stop();
     }
+
+    /***
+     * 客户端调用时，由servletServerHandler.handle()调用AdminBiz的方法
+     * @param request
+     * @param response
+     * @throws IOException
+     * @throws ServletException
+     */
     public static void invokeAdminService(HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
         servletServerHandler.handle(null, request, response);
     }

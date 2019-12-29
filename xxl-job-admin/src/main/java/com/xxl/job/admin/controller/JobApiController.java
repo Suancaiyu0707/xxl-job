@@ -24,6 +24,13 @@ public class JobApiController implements InitializingBean {
 
     }
 
+    /***
+     * 客户端的执行器在启动的时候，会通过http请求调用该方法
+     * @param request
+     * @param response
+     * @throws IOException
+     * @throws ServletException
+     */
     @RequestMapping(AdminBiz.MAPPING)
     @PermissionLimit(limit=false)
     public void api(HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {

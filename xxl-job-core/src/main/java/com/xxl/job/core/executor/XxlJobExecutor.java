@@ -27,17 +27,18 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Created by xuxueli on 2016/3/2 21:14.
+ * 通过XxlJobExecutor.start启动执行器
  */
 public class XxlJobExecutor  {
     private static final Logger logger = LoggerFactory.getLogger(XxlJobExecutor.class);
 
     // ---------------------- param ----------------------
-    private String adminAddresses;
+    private String adminAddresses;//http://127.0.0.1:8080/xxl-job-admin
     private String appName;
     private String ip;
     private int port;
     private String accessToken;
-    private String logPath;
+    private String logPath;// /data/applogs/xxl-job/jobhandler
     private int logRetentionDays;
 
     public void setAdminAddresses(String adminAddresses) {
@@ -180,8 +181,8 @@ public class XxlJobExecutor  {
 
     /**
      * 启动另一个执行器的执行线程XxlRpcProviderFactory这个类是XXl其他的开源项目，自研RPC
-     * @param ip
-     * @param port
+     * @param ip eg：192.168.0.103
+     * @param port eg：9996
      * @param appName
      * @param accessToken
      * @throws Exception
@@ -252,7 +253,7 @@ public class XxlJobExecutor  {
     private static ConcurrentHashMap<String, IJobHandler> jobHandlerRepository = new ConcurrentHashMap<String, IJobHandler>();
 
     /***
-     * 执行器注册的时候，会缓存到amdin项目里的内存jobHandlerRepository里
+     * 执行器注册的时候，会缓存到内存jobHandlerRepository里
      * @param name 执行器名称
      * @param jobHandler 执行器
      * @return

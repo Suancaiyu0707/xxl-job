@@ -26,7 +26,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Created by xuxueli on 2016/3/2 21:14.
+ * 任务的执行器
  * 通过XxlJobExecutor.start启动执行器
  */
 public class XxlJobExecutor  {
@@ -125,7 +125,7 @@ public class XxlJobExecutor  {
     private static Serializer serializer;
 
     /***
-     *  初始化 admin-client 向adminBizList字段中放入XxlRpcReferenceBean返回的代理类
+     *  根据调度器的地址，为每一个调度器初始化一个基于Netty网络连接的远程服务调用对象AdminBiz
      * @param adminAddresses 调度中心的地址(这里是xxl-job的admin)
      * @param accessToken
      * @throws Exception
@@ -133,11 +133,12 @@ public class XxlJobExecutor  {
     private void initAdminBizList(String adminAddresses, String accessToken) throws Exception {
         serializer = Serializer.SerializeEnum.HESSIAN.getSerializer();
         if (adminAddresses!=null && adminAddresses.trim().length()>0) {
+            //遍历调度器地址列表(可能是集群部署)
             for (String address: adminAddresses.trim().split(",")) {
                 if (address!=null && address.trim().length()>0) {
                     //http://127.0.0.1:8080/xxl-job-admin/api
                     String addressUrl = address.concat(AdminBiz.MAPPING);
-
+                    //为每一个调度器初始化一个基于Netty网络连接的远程服务调用对象AdminBiz
                     AdminBiz adminBiz = (AdminBiz) new XxlRpcReferenceBean(
                             NetEnum.NETTY_HTTP,
                             serializer,
@@ -180,6 +181,17 @@ public class XxlJobExecutor  {
     private XxlRpcProviderFactory xxlRpcProviderFactory = null;
 
     /**
+     * 调用中心调用过来的request:
+     *  requestId = "008c8a78-209b-407a-8bb9-6e090e025870"
+     * createMillisTime = 1577712758542
+     * accessToken = ""
+     * className = "com.xxl.job.core.biz.ExecutorBiz"
+     * methodName = "run"
+     * parameterTypes = {Class[1]@6060}
+     * parameters = {Object[1]@6061}
+     * version = null
+     *
+     *
      * 启动另一个执行器的执行线程XxlRpcProviderFactory这个类是XXl其他的开源项目，自研RPC
      * @param ip eg：192.168.0.103
      * @param port eg：9996
@@ -191,29 +203,43 @@ public class XxlJobExecutor  {
     private void initRpcProvider(String ip, int port, String appName, String accessToken) throws Exception {
 
         // init, provider factory 初始化提供者工厂
-        String address = IpUtil.getIpPort(ip, port);
+        String address = IpUtil.getIpPort(ip, port);//172.17.208.173:9999
         Map<String, String> serviceRegistryParam = new HashMap<String, String>();
-        serviceRegistryParam.put("appName", appName);
+        serviceRegistryParam.put("appName", appName);//xxl-job-executor-sample
         serviceRegistryParam.put("address", address);
         // 初始化提供者工厂
         xxlRpcProviderFactory = new XxlRpcProviderFactory();
-        xxlRpcProviderFactory.initConfig(NetEnum.NETTY_HTTP, Serializer.SerializeEnum.HESSIAN.getSerializer(), ip, port, accessToken, ExecutorServiceRegistry.class, serviceRegistryParam);
+        xxlRpcProviderFactory.initConfig(NetEnum.NETTY_HTTP,
+                Serializer.SerializeEnum.HESSIAN.getSerializer(),
+                ip, port, accessToken,
+                ExecutorServiceRegistry.class,//xxlRpcProviderFactory.start()时候会调用该类的start方法
+                serviceRegistryParam);
 
         // 增加服务接口和服务实现,供给调用中心调用
         xxlRpcProviderFactory.addService(ExecutorBiz.class.getName(), null, new ExecutorBizImpl());
 
-        // start
+        // start，这里的内部会触发ExecutorServiceRegistry的start()凡方法
         xxlRpcProviderFactory.start();
 
     }
 
+    /***
+     * 启动一个向调度器注册和取消注册管理器
+     */
     public static class ExecutorServiceRegistry extends ServiceRegistry {
-
+        /**
+         * 启动向调度器注册
+         * @param param
+         */
         @Override
         public void start(Map<String, String> param) {
-            // start registry
+            // 开始将执行器本身注册到调度器上，并每隔30s更新发送心跳
             ExecutorRegistryThread.getInstance().start(param.get("appName"), param.get("address"));
         }
+
+        /***
+         * 停止向调度器注册
+         */
         @Override
         public void stop() {
             // stop registry
@@ -239,6 +265,9 @@ public class XxlJobExecutor  {
 
     }
 
+    /***
+     * 关闭用于向调度器请求的RPC网络连接
+     */
     private void stopRpcProvider() {
         // stop provider factory
         try {
@@ -250,10 +279,14 @@ public class XxlJobExecutor  {
 
 
     // ---------------------- job handler repository ----------------------
+    /***
+     * 用于缓存任务处理器名称和任务处理器的映射关系，任务处理器名称不能重复。
+     * 一个执行器下面可能有多个不同的任务处理器，每个处理器负责处理不同的任务
+     */
     private static ConcurrentHashMap<String, IJobHandler> jobHandlerRepository = new ConcurrentHashMap<String, IJobHandler>();
 
     /***
-     * 执行器注册的时候，会缓存到内存jobHandlerRepository里
+     * 任务处理器注册的时候，会缓存到内存jobHandlerRepository里（一个执行器下面可能挂着很多任务处理器，用于处理不同的任务）
      * @param name 执行器名称
      * @param jobHandler 执行器
      * @return
@@ -264,7 +297,7 @@ public class XxlJobExecutor  {
     }
 
     /**
-     * 根据执行器名称获得对应的执行器
+     * xxl-job执行器端根据任务处理器名称获得对应的任务处理器（一个执行器下面可能挂着很多任务处理器，用于处理不同的任务）
      * @param name
      * @return
      */
@@ -274,20 +307,26 @@ public class XxlJobExecutor  {
 
 
     // ---------------------- job thread repository ----------------------
+    /***
+     * 用于缓存任务处理器需要处理的调度任务id和任务处理器对应的线程的映射关系，
+     * 一个执行器下面可能有多个不同的任务处理器，每个处理器负责处理不同的任务id
+     */
     private static ConcurrentHashMap<Integer, JobThread> jobThreadRepository = new ConcurrentHashMap<Integer, JobThread>();
 
     /***
-     * 注册一个线程，
+     * 注册一个线程，绑定一个任务id和一个任务处理器，这样对应的调度任务会由对应的任务处理器的线程进行执行
      * @param jobId 任务id
      * @param handler 实现IJobHandler的handler,通常由客户端提供
      * @param removeOldReason
      * @return
      */
     public static JobThread registJobThread(int jobId, IJobHandler handler, String removeOldReason){
+        //根据任务id和任务处理器创建一个线程JobThread
         JobThread newJobThread = new JobThread(jobId, handler);
+        //启动JobThread，这个JobThread会循环的从它负责的队列里拉取待执行的调度任务进行执行
         newJobThread.start();
         logger.info(">>>>>>>>>>> xxl-job regist JobThread success, jobId:{}, handler:{}", new Object[]{jobId, handler});
-
+        //维护任务id和执行任务的线程的映射关系，这样指定的调度任务会交由对应绑定的线程去执行
         JobThread oldJobThread = jobThreadRepository.put(jobId, newJobThread);	// putIfAbsent | oh my god, map's put method return the old value!!!
         if (oldJobThread != null) {
             oldJobThread.toStop(removeOldReason);

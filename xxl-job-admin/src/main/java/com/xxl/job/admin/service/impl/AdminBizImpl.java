@@ -24,6 +24,7 @@ import java.util.List;
 
 /**
  * @author xuxueli 2017-07-27 21:54:20
+ * 这个是调度器实现类，会接收执行器的回调
  */
 @Service
 public class AdminBizImpl implements AdminBiz {

@@ -32,6 +32,8 @@ public class TriggerCallbackThread {
 
     /**
      * job results callback queue
+     *
+     * 执行器任务结果的回调队列
      */
     private LinkedBlockingQueue<HandleCallbackParam> callBackQueue = new LinkedBlockingQueue<HandleCallbackParam>();
     public static void pushCallBack(HandleCallbackParam callback){
@@ -217,14 +219,15 @@ public class TriggerCallbackThread {
 
     private void retryFailCallbackFile(){
 
-        // valid
+        // valid /data/applogs/xxl-job/jobhandler/callbacklog/
         File callbackLogPath = new File(failCallbackFilePath);
         if (!callbackLogPath.exists()) {
             return;
         }
-        if (callbackLogPath.isFile()) {
+        if (callbackLogPath.isFile()) {//判断callbackLogPath不能是一个文件
             callbackLogPath.delete();
         }
+        //判断callbackLogPath是一个目录，且/data/applogs/xxl-job/jobhandler/callbacklog含有文件，则继续走下去
         if (!(callbackLogPath.isDirectory() && callbackLogPath.list()!=null && callbackLogPath.list().length>0)) {
             return;
         }

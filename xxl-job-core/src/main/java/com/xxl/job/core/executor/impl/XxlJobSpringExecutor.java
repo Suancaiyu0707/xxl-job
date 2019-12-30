@@ -11,10 +11,11 @@ import org.springframework.context.ApplicationContextAware;
 import java.util.Map;
 
 /**
- * xxl-job executor (for spring)
+ * 执行器要依赖此core包，所以会初始化XxlJobSpringExecutor对象
  *
  * @author xuxueli 2018-11-01 09:24:52
  * 实现ApplicationContextAware接口，用来保存spring的上下文信息
+ * 会遍历spring容器，并把容器里所有的IJobHandler执行器都放到缓存里
  */
 public class XxlJobSpringExecutor extends XxlJobExecutor implements ApplicationContextAware {
 
@@ -22,7 +23,7 @@ public class XxlJobSpringExecutor extends XxlJobExecutor implements ApplicationC
     @Override
     public void start() throws Exception {
 
-        // init JobHandler Repository
+        // 会遍历spring容器，并把容器里所有的IJobHandler执行器都放到缓存里
         initJobHandlerRepository(applicationContext);
 
         // 初始化一个SpringGlueFactory
@@ -33,12 +34,18 @@ public class XxlJobSpringExecutor extends XxlJobExecutor implements ApplicationC
         super.start();
     }
 
+    /***
+     *
+     * @param applicationContext
+     * 1、初始化spring容器中的执行器 JobHandler
+     * 2、将spring容器中的执行器 JobHandler注册到本地内存jobHandlerRepository中，名称不能重复
+     */
     private void initJobHandlerRepository(ApplicationContext applicationContext){
         if (applicationContext == null) {
             return;
         }
 
-        // 获取JobHandler的实现类
+        // 从容器里获取JobHandler的实现类
         Map<String, Object> serviceBeanMap = applicationContext.getBeansWithAnnotation(JobHandler.class);
 
         if (serviceBeanMap!=null && serviceBeanMap.size()>0) {

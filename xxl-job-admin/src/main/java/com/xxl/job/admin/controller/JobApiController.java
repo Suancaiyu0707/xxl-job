@@ -14,6 +14,7 @@ import java.io.IOException;
 
 /**
  * Created by xuxueli on 17/5/10.
+ * 该controller是交给执行器来调用，用于注册执行器(注册到xxl_job_registry)
  */
 @Controller
 public class JobApiController implements InitializingBean {

@@ -21,14 +21,28 @@ import java.util.concurrent.*;
 
 
 /**
- * handler thread
+ * 	一个执行器下面可能有很多个任务处理器。当调度器把要执行器的任务分配给当前执行器时，执行器会根据任务信息，把它交给相应的任务处理器执行器。
+ *	每个任务处理器JobHandler都会有一个专门对应的线程JobThread，用于处理调度器分配给当前任务处理器JobHandler的调度任务。
+ *	1、调度器会通过RPC请求向执行器分配任务
+ *	2、执行器ExecutorBizImpl在接收到调度器发送过来的调度任务后，会根据任务配置的处理器，获取对应的任务线程JobThread，并放到任务线程绑定的队列：triggerQueue，并异步响应给调度器
+ *	3、任务线程本身会不停的从队列	triggerQueue弹出待执行的任务，并交给绑定的JobHandler去执行，并返回结果。
+ *
  * @author xuxueli 2016-1-16 19:52:47
+ *
  */
 public class JobThread extends Thread{
 	private static Logger logger = LoggerFactory.getLogger(JobThread.class);
-
+	/**
+	 * 调度id
+	 */
 	private int jobId;
+	/***
+	 * 调度任务真正的任务处理器
+	 */
 	private IJobHandler handler;
+	/***
+	 * 每次调度器分发任务的时候，都会先放到对列中，然后循环的从队列里弹出并触发任务执行
+	 */
 	private LinkedBlockingQueue<TriggerParam> triggerQueue;
 	private Set<Integer> triggerLogIdSet;		// avoid repeat trigger for the same TRIGGER_LOG_ID
 
@@ -39,7 +53,7 @@ public class JobThread extends Thread{
 	private int idleTimes = 0;			// idel times
 
 	/***
-	 * 每个job会绑定一个JobThread线程，每个线程会绑定对应的 handler类型
+	 * 每个执行器会绑定一个JobThread线程，每个线程会绑定对应的 handler类型
 	 * @param jobId
 	 * @param handler
 	 */
@@ -54,7 +68,7 @@ public class JobThread extends Thread{
 	}
 
     /**
-     * new trigger to queue
+     * 调度器会把任务推到队列里，然后定时线程定时的从队列里拉取任务
      *
      * @param triggerParam
      * @return
@@ -115,7 +129,7 @@ public class JobThread extends Thread{
             try {
 				// to check toStop signal, we need cycle, so wo cannot use queue.take(), instand of poll(timeout)
 				triggerParam = triggerQueue.poll(3L, TimeUnit.SECONDS);
-				if (triggerParam!=null) {//如果有等待的任务
+				if (triggerParam!=null) {//如果有任务等待执行
 					running = true;
 					idleTimes = 0;
 					triggerLogIdSet.remove(triggerParam.getLogId());
@@ -137,14 +151,15 @@ public class JobThread extends Thread{
 							FutureTask<ReturnT<String>> futureTask = new FutureTask<ReturnT<String>>(new Callable<ReturnT<String>>() {
 								@Override
 								public ReturnT<String> call() throws Exception {
+									//执行器开始进行调用任务
 									return handler.execute(triggerParamTmp.getExecutorParams());
 								}
 							});
 							futureThread = new Thread(futureTask);
 							futureThread.start();
-
+							//等待执行结果，超过一定的时间没返回的话，则请求超时
 							executeResult = futureTask.get(triggerParam.getExecutorTimeout(), TimeUnit.SECONDS);
-						} catch (TimeoutException e) {
+						} catch (TimeoutException e) {//请求超时
 
 							XxlJobLogger.log("<br>----------- xxl-job job execute timeout");
 							XxlJobLogger.log(e);
@@ -153,14 +168,14 @@ public class JobThread extends Thread{
 						} finally {
 							futureThread.interrupt();
 						}
-					} else {
+					} else {//如果没有设置超时时间，则一直等待执行
 						// just execute
 						executeResult = handler.execute(triggerParam.getExecutorParams());
 					}
-
+					//处理任务执行结果，如果超时还没返回，则表示执行失败
 					if (executeResult == null) {
 						executeResult = IJobHandler.FAIL;
-					} else {
+					} else {//如果返回结果
 						executeResult.setMsg(
 								(executeResult!=null&&executeResult.getMsg()!=null&&executeResult.getMsg().length()>50000)
 										?executeResult.getMsg().substring(0, 50000).concat("...")
@@ -169,12 +184,12 @@ public class JobThread extends Thread{
 					}
 					XxlJobLogger.log("<br>----------- xxl-job job execute end(finish) -----------<br>----------- ReturnT:" + executeResult);
 
-				} else {
-					if (idleTimes > 30) {
+				} else {//如果队列是空的，表示没有任务
+					if (idleTimes > 30) {//如果连续90s都没有有任务，则把这个任务移除掉
 						XxlJobExecutor.removeJobThread(jobId, "excutor idel times over limit.");
 					}
 				}
-			} catch (Throwable e) {
+			} catch (Throwable e) {//如果执行报错了
 				if (toStop) {
 					XxlJobLogger.log("<br>----------- JobThread toStop, stopReason:" + stopReason);
 				}
@@ -186,12 +201,13 @@ public class JobThread extends Thread{
 
 				XxlJobLogger.log("<br>----------- JobThread Exception:" + errorMsg + "<br>----------- xxl-job job execute end(error) -----------");
 			} finally {
-                if(triggerParam != null) {
-                    // callback handler info
-                    if (!toStop) {
+            	//
+                if(triggerParam != null) {//表示从队列里有等待执行的任务
+
+                    if (!toStop) {// 如果这个JobHandler没有停止，则将执行结果放到TriggerCallbackThread.callBackQueue队列中
                         // commonm
                         TriggerCallbackThread.pushCallBack(new HandleCallbackParam(triggerParam.getLogId(), triggerParam.getLogDateTim(), executeResult));
-                    } else {
+                    } else {// 如果这个JobHandler停止，则将执行失败的结果放到TriggerCallbackThread.callBackQueue队列中
                         // is killed
                         ReturnT<String> stopResult = new ReturnT<String>(ReturnT.FAIL_CODE, stopReason + " [job running，killed]");
                         TriggerCallbackThread.pushCallBack(new HandleCallbackParam(triggerParam.getLogId(), triggerParam.getLogDateTim(), stopResult));
@@ -200,7 +216,7 @@ public class JobThread extends Thread{
             }
         }
 
-		// callback trigger request in queue
+		// 如果handler已经stop了，则对队列中剩余的待触发的任务都直接失败TriggerParam
 		while(triggerQueue !=null && triggerQueue.size()>0){
 			TriggerParam triggerParam = triggerQueue.poll();
 			if (triggerParam!=null) {

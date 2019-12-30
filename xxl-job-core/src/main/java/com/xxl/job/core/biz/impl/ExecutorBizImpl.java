@@ -20,6 +20,7 @@ import java.util.Date;
 
 /**
  * Created by xuxueli on 17/3/1.
+ * 该实现接口是执行器真正执行任务的接口，由调度调用执行器的ExecutorBizImpl.run进行任务调用
  */
 public class ExecutorBizImpl implements ExecutorBiz {
     private static Logger logger = LoggerFactory.getLogger(ExecutorBizImpl.class);
@@ -67,6 +68,7 @@ public class ExecutorBizImpl implements ExecutorBiz {
     }
 
     /***
+     * 执行器开始执行调度器分配的任务
      * 开始调度任务（本质是把它放到队列里，有单独的线程从队列里拿出并进行触发）
      * 这边我们会发现，每个jobInfo会对应一个单独的JobThread
      * @param triggerParam

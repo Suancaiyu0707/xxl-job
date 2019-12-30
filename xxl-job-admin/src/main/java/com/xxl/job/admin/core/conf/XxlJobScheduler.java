@@ -66,6 +66,17 @@ public class XxlJobScheduler implements InitializingBean, DisposableBean {
         JobFailMonitorHelper.getInstance().start();
 
         // 初始化一个基于Netty的RPC服务提供者，该提供者主要是用于接收执行器的请求和注册
+        /***
+         * 执行器调用过来的request：
+         *      requestId = "458b2416-3ca3-49a4-b947-8b41a029af6a"
+         *      createMillisTime = 1577706301371
+         *      accessToken = ""
+         *      className = "com.xxl.job.core.biz.AdminBiz"
+         *      methodName = "registry"
+         *      parameterTypes = {Class[1]@6627}
+         *      parameters = {Object[1]@6628}
+         *      version = null
+         */
         initRpcProvider();
 
         // 启动一个定时任务，不断的从 xxl_job_info 表中提取将要执行的任务，更新下次执行时间的，调用JobTriggerPoolHelper类，来给执行器发送调度任务的
@@ -105,6 +116,18 @@ public class XxlJobScheduler implements InitializingBean, DisposableBean {
     private static ServletServerHandler servletServerHandler;
 
     /***
+     *
+     * 执行器调用过来的request：
+     *  requestId = "458b2416-3ca3-49a4-b947-8b41a029af6a"
+     * createMillisTime = 1577706301371
+     * accessToken = ""
+     * className = "com.xxl.job.core.biz.AdminBiz"
+     * methodName = "registry"
+     * parameterTypes = {Class[1]@6627}
+     * parameters = {Object[1]@6628}
+     * version = null
+     *
+     *
      * 初始化一个基于Netty的RPC服务提供者，该提供者主要是用于接收执行器的请求和注册
      * 1、对XxlRpcProviderFactory进行初始化配置：
      *      传输方式：netty

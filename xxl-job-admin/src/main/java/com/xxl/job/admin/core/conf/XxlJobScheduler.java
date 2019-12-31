@@ -178,17 +178,18 @@ public class XxlJobScheduler implements InitializingBean, DisposableBean {
     private static ConcurrentHashMap<String, ExecutorBiz> executorBizRepository = new ConcurrentHashMap<String, ExecutorBiz>();
 
     /***
-     * 根据地址获得对应的业务执行器 ExecutorBiz
+     * 根据执行器的地址返回执行器代理对象，用于调用相应的执行进行任务调用
      * @param address 执行器地址：192.168.0.103:9999
      * @return
      * @throws Exception
+     * 1、创建一个 ExecutorBiz代理对象，该代理对象底层采用Netty网络连接向执行器地址发起请求，并维护到内存里
+     * 2、将执行器映射的带有Netty网络连接执行对象缓存到内存里，每个执行器地址，只需维护一个NettyClient客户端连接即可
      */
     public static ExecutorBiz getExecutorBiz(String address) throws Exception {
         // 校验执行器的地址是为空
         if (address==null || address.trim().length()==0) {
             return null;
         }
-
         // 每隔执行器地址都对应一个ExecutorBiz，用于发送网络请求
         address = address.trim();
         //检查内存里是否已经维护了该执行器对应的ExecutorBiz，有则直接返回
@@ -196,8 +197,8 @@ public class XxlJobScheduler implements InitializingBean, DisposableBean {
         if (executorBiz != null) {
             return executorBiz;
         }
-
-        // 为执行器地址维护一个ExecutorBiz用于网络请求，并维护到内存里
+        //创建一个 ExecutorBiz代理对象，该代理对象底层采用Netty网络连接向执行器地址发起请求，并维护到内存里
+        // 每个执行器地址，只需维护一个NettyClient客户端连接即可，会缓存到内存里
         //默认采用的是Netty网络连接
         executorBiz = (ExecutorBiz) new XxlRpcReferenceBean(
                 NetEnum.NETTY_HTTP, // 网络传输方式
@@ -211,7 +212,7 @@ public class XxlJobScheduler implements InitializingBean, DisposableBean {
                 XxlJobAdminConfig.getAdminConfig().getAccessToken(), //认证token
                 null,
                 null).getObject();
-        //存放到内存里
+        //将执行器映射的带有Netty网络连接执行对象缓存到内存里，每个执行器地址，只需维护一个NettyClient客户端连接即可
         executorBizRepository.put(address, executorBiz);
         return executorBiz;
     }

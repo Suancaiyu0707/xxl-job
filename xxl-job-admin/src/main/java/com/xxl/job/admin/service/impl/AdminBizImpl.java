@@ -37,7 +37,11 @@ public class AdminBizImpl implements AdminBiz {
     @Resource
     private XxlJobRegistryDao xxlJobRegistryDao;
 
-
+    /**
+     * 执行器把执行结果回调通知给调度器
+     * @param callbackParamList
+     * @return
+     */
     @Override
     public ReturnT<String> callback(List<HandleCallbackParam> callbackParamList) {
         for (HandleCallbackParam handleCallbackParam: callbackParamList) {
@@ -49,6 +53,11 @@ public class AdminBizImpl implements AdminBiz {
         return ReturnT.SUCCESS;
     }
 
+    /**
+     * 执行器把执行结果回调通知给调度器
+     * @param handleCallbackParam
+     * @return
+     */
     private ReturnT<String> callback(HandleCallbackParam handleCallbackParam) {
         // valid log item
         XxlJobLog log = xxlJobLogDao.load(handleCallbackParam.getLogId());
@@ -123,7 +132,7 @@ public class AdminBizImpl implements AdminBiz {
     }
 
     /***
-     * 执行器在启动时候会通过http发送注册的请求
+     * 执行器会定时通过http发送注册的请求(保持心跳)
      * 执行器将自己注册到数据库里，如果注册里没有的话，则新增一条，如果数据库里有的话，则更新
      * @param registryParam 注册信息eg：RegistryParam{registGroup='EXECUTOR', registryKey='xxl-job-executor-sample-frameless', registryValue='192.168.0.103:9996'}
      * @return

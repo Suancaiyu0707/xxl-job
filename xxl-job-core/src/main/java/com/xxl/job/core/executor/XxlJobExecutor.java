@@ -80,9 +80,9 @@ public class XxlJobExecutor  {
         // 初始化日志文件的配置（默认/data/applogs/xxl-job/jobhandler"）
         XxlJobFileAppender.initLogPath(logPath);
 
-        // 向配置的调度中心admin地址发送一个注册执行器的restful请求：http://127.0.0.1:8080/xxl-job-admin/api
+        // 初始化XxlRpcReferenceBean列表，每个XxlRpcReferenceBean是一个内部持有到调度器地址的netty网络连接AdminBiz代理对象的，用于向配置的调度中心admin地址列表中的每个调度中心发送注册执行器的restful请求：http://127.0.0.1:8080/xxl-job-admin/api
+        //执行器向调度器发送心跳，就是通过该XxlRpcReferenceBean每隔30s发送一次
         initAdminBizList(adminAddresses, accessToken);
-
 
         // 启动定时清除日志的线程
         JobLogFileCleanThread.getInstance().start(logRetentionDays);
@@ -125,7 +125,8 @@ public class XxlJobExecutor  {
     private static Serializer serializer;
 
     /***
-     *  根据调度器的地址，为每一个调度器初始化一个基于Netty网络连接的远程服务调用对象AdminBiz
+     *  根据调度器的地址，根据每一个的调度器地址创建一个AdminBiz代理对象XxlRpcReferenceBean，
+     *  其中每个XxlRpcReferenceBean代理对象内部都持有一个Netty的客户端连接，连接到调度器地址上，当调用adminBiz方法的时候，该代理对象会通过Netty客户端向调度发送tcp请求
      * @param adminAddresses 调度中心的地址(这里是xxl-job的admin)
      * @param accessToken
      * @throws Exception
@@ -138,9 +139,9 @@ public class XxlJobExecutor  {
                 if (address!=null && address.trim().length()>0) {
                     //http://127.0.0.1:8080/xxl-job-admin/api
                     String addressUrl = address.concat(AdminBiz.MAPPING);
-                    //为每一个调度器初始化一个基于Netty网络连接的远程服务调用对象AdminBiz
-                    AdminBiz adminBiz = (AdminBiz) new XxlRpcReferenceBean(
-                            NetEnum.NETTY_HTTP,
+                    //根据AdminBiz接口创建一个代理对象XxlRpcReferenceBean，这个XxlRpcReferenceBean中持有一个指向调度器地址的Netty客户端连接。当调用adminBiz方法的时候，该代理对象会通过Netty客户端向调度发送tcp请求
+                            AdminBiz adminBiz = (AdminBiz) new XxlRpcReferenceBean(
+                            NetEnum.NETTY_HTTP,//指定代理对象XxlRpcReferenceBean
                             serializer,
                             CallType.SYNC,
                             LoadBalance.ROUND,
@@ -151,8 +152,7 @@ public class XxlJobExecutor  {
                             accessToken,
                             null,
                             null
-                    ).getObject();
-
+                    ).getObject();//获得AdminBiz的代理对象
                     if (adminBizList == null) {
                         adminBizList = new ArrayList<AdminBiz>();
                     }
@@ -286,7 +286,7 @@ public class XxlJobExecutor  {
     private static ConcurrentHashMap<String, IJobHandler> jobHandlerRepository = new ConcurrentHashMap<String, IJobHandler>();
 
     /***
-     * 任务处理器注册的时候，会缓存到内存jobHandlerRepository里（一个执行器下面可能挂着很多任务处理器，用于处理不同的任务）
+     * 缓存本地启动的任务处理器，会缓存到内存jobHandlerRepository里（一个执行器下面可能挂着很多任务处理器，用于处理不同的任务）
      * @param name 执行器名称
      * @param jobHandler 执行器
      * @return

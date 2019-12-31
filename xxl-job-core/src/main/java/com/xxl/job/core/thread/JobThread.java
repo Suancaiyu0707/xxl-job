@@ -205,7 +205,6 @@ public class JobThread extends Thread{
                 if(triggerParam != null) {//表示从队列里有等待执行的任务
 
                     if (!toStop) {// 如果这个JobHandler没有停止，则将执行结果放到TriggerCallbackThread.callBackQueue队列中
-                        // commonm
                         TriggerCallbackThread.pushCallBack(new HandleCallbackParam(triggerParam.getLogId(), triggerParam.getLogDateTim(), executeResult));
                     } else {// 如果这个JobHandler停止，则将执行失败的结果放到TriggerCallbackThread.callBackQueue队列中
                         // is killed

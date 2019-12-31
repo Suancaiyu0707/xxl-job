@@ -21,6 +21,10 @@ import java.util.concurrent.TimeUnit;
 /**
  * Created by xuxueli on 16/7/22.
  * 启动针对任务结果回调处理线程
+ * 执行器通过当前线程向调度器发起回调，返回调度任务执行的结果
+ * 1、执行器ExecutorBizImpl接收到调度器的分配的任务，会调用run()方法
+ * 2、ExecutorBizImpl会根据jobId将任务交给对应的JobHandler去调用
+ * 3、JobHandler会把执行结果放到回调队列callBackQueue里，然后回调调度器。
  */
 public class TriggerCallbackThread {
     private static Logger logger = LoggerFactory.getLogger(TriggerCallbackThread.class);
@@ -36,6 +40,11 @@ public class TriggerCallbackThread {
      * 执行器任务结果的回调队列
      */
     private LinkedBlockingQueue<HandleCallbackParam> callBackQueue = new LinkedBlockingQueue<HandleCallbackParam>();
+
+    /**
+     * 任务处理器处理完任务后，会把结果集放到callBackQueue队列中，然后有一个线程会不断的从队列里获取结果进行处理 triggerCallbackThread
+     * @param callback
+     */
     public static void pushCallBack(HandleCallbackParam callback){
         getInstance().callBackQueue.add(callback);
         logger.debug(">>>>>>>>>>> xxl-job, push callback request, logId:{}", callback.getLogId());
@@ -47,6 +56,10 @@ public class TriggerCallbackThread {
     private Thread triggerCallbackThread;
     private Thread triggerRetryCallbackThread;
     private volatile boolean toStop = false;
+
+    /***
+     * 不断的从排队队列里提取准备回调调用器，通知执行结果
+     */
     public void start() {
 
         // 检查是否配置了服务端的地址：
@@ -65,6 +78,7 @@ public class TriggerCallbackThread {
                 // normal callback
                 while(!toStop){
                     try {
+                        //检查回调队列里是否有回调对象
                         HandleCallbackParam callback = getInstance().callBackQueue.take();
                         if (callback != null) {
 
@@ -75,6 +89,7 @@ public class TriggerCallbackThread {
 
                             // callback, will retry if error
                             if (callbackParamList!=null && callbackParamList.size()>0) {
+                                //回调调度器执行结果
                                 doCallback(callbackParamList);
                             }
                         }
@@ -84,7 +99,7 @@ public class TriggerCallbackThread {
                         }
                     }
                 }
-
+                //走到这边，说明当前执行器停止了，这时候要把剩余的执行结果回调调度器AdminImpl,并通知调度器
                 // last callback
                 try {
                     List<HandleCallbackParam> callbackParamList = new ArrayList<HandleCallbackParam>();
@@ -154,7 +169,7 @@ public class TriggerCallbackThread {
     }
 
     /**
-     * do callback, will retry if error
+     *  通过AdminBiz回调调度器通知执行结果
      * @param callbackParamList
      */
     private void doCallback(List<HandleCallbackParam> callbackParamList){

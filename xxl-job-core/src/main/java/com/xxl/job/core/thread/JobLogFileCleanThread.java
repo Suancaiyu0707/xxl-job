@@ -28,6 +28,22 @@ public class JobLogFileCleanThread {
 
     private Thread localThread;
     private volatile boolean toStop = false;
+
+    /**
+     * 清除/data/applogs/xxl-job/jobhandler/目录下所有带横杆'-'的目录里的过期日志文件
+     *
+     * 结构如下:
+     * 	---/
+     * 	---/gluesource/
+     * 	---/gluesource/10_1514171108000.js
+     * 	---/gluesource/10_1514171108000.js
+     * 	---/callbacklog/
+     * 	---/gluesource/xxl-job-callback-1514171109000.log
+     * 	---/2017-12-25/
+     * 	---/2017-12-25/639.log
+     * 	---/2017-12-25/821.log
+     *
+     */
     public void start(final long logRetentionDays){
 
         // limit min value
@@ -40,11 +56,11 @@ public class JobLogFileCleanThread {
             public void run() {
                 while (!toStop) {
                     try {
-                        // clean log dir, over logRetentionDays
+                        // 获得/data/applogs/xxl-job/jobhandler/目录下所有的文件
                         File[] childDirs = new File(XxlJobFileAppender.getLogPath()).listFiles();
                         if (childDirs!=null && childDirs.length>0) {
 
-                            // today
+                            // 获得当天的时间
                             Calendar todayCal = Calendar.getInstance();
                             todayCal.set(Calendar.HOUR_OF_DAY,0);
                             todayCal.set(Calendar.MINUTE,0);
@@ -52,18 +68,19 @@ public class JobLogFileCleanThread {
                             todayCal.set(Calendar.MILLISECOND,0);
 
                             Date todayDate = todayCal.getTime();
-
+                            //遍历 /data/applogs/xxl-job/jobhandler/目录下所有的文件
                             for (File childFile: childDirs) {
 
-                                // valid
+                                // 如果子文件不是目录，则跳过
                                 if (!childFile.isDirectory()) {
                                     continue;
                                 }
+                                //如果子文件是一个目录，但是名称不包含'-'
                                 if (childFile.getName().indexOf("-") == -1) {
                                     continue;
                                 }
 
-                                // file create date
+                                //获得子文件的时间
                                 Date logFileCreateDate = null;
                                 try {
                                     SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd");
@@ -74,7 +91,7 @@ public class JobLogFileCleanThread {
                                 if (logFileCreateDate == null) {
                                     continue;
                                 }
-
+                                //删除过期的子文件
                                 if ((todayDate.getTime()-logFileCreateDate.getTime()) >= logRetentionDays * (24 * 60 * 60 * 1000) ) {
                                     FileUtil.deleteRecursively(childFile);
                                 }

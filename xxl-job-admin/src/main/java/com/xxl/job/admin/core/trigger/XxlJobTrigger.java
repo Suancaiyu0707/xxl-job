@@ -209,6 +209,19 @@ public class XxlJobTrigger {
     /**
      * 执行触发的任务
      * @param triggerParam
+     *  {jobId = 1
+     * executorHandler = "demoJobHandler"
+     * executorParams = ""
+     * executorBlockStrategy = "SERIAL_EXECUTION"
+     * executorTimeout = 0
+     * logId = 1023
+     * logDateTim = 1577787507688
+     * glueType = "BEAN"
+     * glueSource = ""
+     * glueUpdatetime = 1541254891000
+     * broadcastIndex = 0
+     * broadcastTotal = 1
+     * }
      * @param address 被选中的执行器的地址：192.168.0.103:9999
      * @return
      */
@@ -217,7 +230,7 @@ public class XxlJobTrigger {
         try {
             //获得对应的执行器的网络连接对象（默认采用的是Netty网络连接）
             ExecutorBiz executorBiz = XxlJobScheduler.getExecutorBiz(address);
-            //执行调用业务线程
+            //通过执行器的代理对象，调用远程的执行器，进行任务调度
             runResult = executorBiz.run(triggerParam);
         } catch (Exception e) {
             logger.error(">>>>>>>>>>> xxl-job trigger error, please check if the executor[{}] is running.", address, e);

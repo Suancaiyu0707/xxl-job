@@ -194,8 +194,20 @@ public class XxlJobScheduler implements InitializingBean, DisposableBean {
      * @param address 执行器地址：192.168.0.103:9999
      * @return
      * @throws Exception
-     * 1、创建一个 ExecutorBiz代理对象，该代理对象底层采用Netty网络连接向执行器地址发起请求，并维护到内存里
-     * 2、将执行器映射的带有Netty网络连接执行对象缓存到内存里，每个执行器地址，只需维护一个NettyClient客户端连接即可
+     *
+     * 1、检查本地内存是否有执行器地址对应的NettyHttpClient客户端连接：
+     *      如果有，则直接返回。
+     *      如果没有，需要新建一个
+     * 2、根据执行器的地址，为执行器地址创建ExecutorBiz代理对象XxlRpcReferenceBean，代理对象底层内部都持有一个Netty的客户端连接，NettyClient的连接方式：
+     *      序列化方式：hessian
+     *      同步
+     *      负载均衡：轮询
+     *      连接方式：NettyHttpClient（本质就是一个NettyClient）
+     *      地址：address
+     *      iface: ExecutorBiz 指定这个请求要请求的接口名称
+     *          注意：在XxlJobExecutor.initRpcProvider()初始化的xxlRpcProviderFactory时候，我们维护了一对key-value，其中key的名称就是这个iface。所以这个客户端的后续的请求都会被那个对应ExecutorBizImpl实例执行
+     *   这些指向执行地址的代理对象（NettyClient）的主要有一个作用：
+     *      a、用于向调度器分配调度任务
      */
     public static ExecutorBiz getExecutorBiz(String address) throws Exception {
         // 校验执行器的地址是为空

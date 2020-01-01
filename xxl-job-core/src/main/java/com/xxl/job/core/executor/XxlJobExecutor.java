@@ -92,7 +92,17 @@ public class XxlJobExecutor  {
         // 启动另一个执行器的执行线程XxlRpcProviderFactory这个类是XXl其他的开源项目，自研RPC
         port = port>0?port: NetUtil.findAvailablePort(9999);
         ip = (ip!=null&&ip.trim().length()>0)?ip: IpUtil.getIp();
-        //初始化一个以Netty为网络传输的方式的RPC调用接口，用于接收调度中心的回调ExecutorBiz.run方法的请求
+        /**
+         * 初始化一个基于Netty的服务端，该提供者主要是用于接收执行器对接口ExecutorBiz请求
+         * 1、对XxlRpcProviderFactory进行初始化NettyHttpServer（q底层本质还是Netty实现）配置：
+         *      传输方式：netty
+         *      系列化方式：hessian
+         * 2、为Netty服务端绑定一个key-value，指定对对应接口的请求，交给对应的实例处理：
+         *      这边指定了该NettyHttpServer会把对ExecutorBiz接口的请求交给对应的绑定的ExecutorBizImpl实例处理
+         *
+         * 总结：实际上，当前xxlRpcProviderFactory对应的Netty服务端会接收执行器发过来的一种请求：
+         *      a、调度器在触发调度任务的时候，会通过Netty向执行器分配执行任务，这个时候任务的调度会被ExecutorBizImpl.run执行
+         */
         initRpcProvider(ip, port, appName, accessToken);
     }
     public void destroy(){
@@ -125,8 +135,6 @@ public class XxlJobExecutor  {
     private static Serializer serializer;
 
     /***
-     *  根据调度器的地址，根据每一个的调度器地址创建一个AdminBiz代理对象XxlRpcReferenceBean，
-     *  其中每个XxlRpcReferenceBean代理对象内部都持有一个Netty的客户端连接，连接到调度器地址上，当调用adminBiz方法的时候，该代理对象会通过Netty客户端向调度发送tcp请求
      * @param adminAddresses 调度中心的地址(这里是xxl-job的admin)
      * @param accessToken
      * @throws Exception
@@ -136,9 +144,12 @@ public class XxlJobExecutor  {
      *      序列化方式：hessian
      *      同步
      *      负载均衡：轮询
+     *      连接方式：NettyHttpClient（本质就是一个NettyClient）
      *      地址：http://127.0.0.1:8080/xxl-job-admin
-     *   这些指向调度器地址的代理对象的主要有两个作用：
-     *      a、用于向调度器注册(包括保持心跳)或移除注册。
+     *      iface: AdminBiz 指定这个请求要请求的接口名称
+     *          注意：在XxlJobScheduler.initRpcProvider()初始化的xxlRpcProviderFactory时候，我们维护了一对key-value，其中key的名称就是这个iface。所以这个客户端的后续的请求都会被那个对应AdminBizImpl实例执行
+     *   这些指向调度器地址的代理对象（NettyClient）的主要有两个作用：
+     *      a、用于定时向调度器注册(包括保持心跳)或移除注册。
      *      b、执行器将执行结果通过该代理对象对象进行回调。
      */
     private void initAdminBizList(String adminAddresses, String accessToken) throws Exception {
@@ -208,9 +219,15 @@ public class XxlJobExecutor  {
      * @param appName
      * @param accessToken
      * @throws Exception
-     * 启动了一个以netty作为通讯模型、Hessian作为序列化方式的、ExecutorServiceRegistry作为注册逻辑实现类的服务提供端。
-     * 1、获得本地执行器的ip和端口
-     * 2、创建一个XxlRpcProviderFactory
+     * 初始化一个基于Netty的服务端，该提供者主要是用于接收执行器对接口ExecutorBiz请求
+     * 1、对XxlRpcProviderFactory进行初始化NettyHttpServer（q底层本质还是Netty实现）配置：
+     *      传输方式：netty
+     *      系列化方式：hessian
+     * 2、为Netty服务端绑定一个key-value，指定对对应接口的请求，交给对应的实例处理：
+     *      这边指定了该NettyHttpServer会把对ExecutorBiz接口的请求交给对应的绑定的ExecutorBizImpl实例处理
+     *
+     * 总结：实际上，当前xxlRpcProviderFactory对应的Netty服务端会接收执行器发过来的一种请求：
+     *      a、调度器在触发调度任务的时候，会通过Netty向执行器分配执行任务，这个时候任务的调度会被ExecutorBizImpl.run执行
      */
     private void initRpcProvider(String ip, int port, String appName, String accessToken) throws Exception {
 
@@ -347,6 +364,15 @@ public class XxlJobExecutor  {
 
         return newJobThread;
     }
+
+    /***
+     * 执行器移除一个任务
+     * @param jobId
+     * @param removeOldReason
+     * 1、移除缓存中任务对应的线程JobThread
+     * 2、修改这个被移除的线程的状态属性。
+     * 3、中断这个正在执行的线程（注意这边只是中断，并不是强制停止）
+     */
     public static void removeJobThread(int jobId, String removeOldReason){
         JobThread oldJobThread = jobThreadRepository.remove(jobId);
         if (oldJobThread != null) {

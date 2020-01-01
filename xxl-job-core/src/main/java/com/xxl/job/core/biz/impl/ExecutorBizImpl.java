@@ -46,6 +46,13 @@ public class ExecutorBizImpl implements ExecutorBiz {
         return ReturnT.SUCCESS;
     }
 
+    /***
+     * 停止一个任务
+     * @param jobId
+     * @return
+     * 1、根据任务id查找对应的任务线程
+     * 2、修改线程的状态，并中断这个正在执行的线程（注意这边只是中断，并不是强制停止）
+     */
     @Override
     public ReturnT<String> kill(int jobId) {
         // kill handlerThread, and create new one

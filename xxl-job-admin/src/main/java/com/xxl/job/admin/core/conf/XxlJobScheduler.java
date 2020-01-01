@@ -65,7 +65,6 @@ public class XxlJobScheduler implements InitializingBean, DisposableBean {
         // 启动一个线程，检查最近失败的xxlJobLog日志，并根据失败信息以及任务配置，判断是否需要重试或者发送邮件
         JobFailMonitorHelper.getInstance().start();
 
-        // 初始化一个基于Netty的RPC服务提供者，该提供者主要是用于接收执行器的请求和注册
         /***
          * 执行器调用过来的request：
          *      requestId = "458b2416-3ca3-49a4-b947-8b41a029af6a"
@@ -76,6 +75,16 @@ public class XxlJobScheduler implements InitializingBean, DisposableBean {
          *      parameterTypes = {Class[1]@6627}
          *      parameters = {Object[1]@6628}
          *      version = null
+         * 初始化一个基于Netty的服务端，该提供者主要是用于接收执行器对接口AdminBiz请求(包括注册、心跳和执行结果回调)
+         * 1、对XxlRpcProviderFactory进行初始化NettyHttpServer（q底层本质还是Netty实现）配置：
+         *      传输方式：netty
+         *      系列化方式：hessian
+         * 2、为Netty服务端绑定一个key-value，指定对对应接口的请求，交给对应的实例处理：
+         *      这边指定了该NettyHttpServer会把对AdminBiz接口的请求交给对应的绑定的AdminBizImpl实例处理
+         *
+         * 总结：实际上，当前xxlRpcProviderFactory对应的Netty服务端会接收执行器发过来的两种请求：
+         *      a、执行器会每隔30s向当前nettyHttpServer发送registry请求，从而执行器和调度器保持了心跳连接。
+         *      b、执行器在执行完调度任务后，会向当前nettyHttpServer发送callback请求，回调通知调度器执行结果。
          */
         initRpcProvider();
 
@@ -128,34 +137,37 @@ public class XxlJobScheduler implements InitializingBean, DisposableBean {
      * version = null
      *
      *
-     * 初始化一个基于Netty的RPC服务提供者，该提供者主要是用于接收执行器的请求和注册
-     * 1、对XxlRpcProviderFactory进行初始化配置：
+     * 初始化一个基于Netty的服务端，该提供者主要是用于接收执行器对接口AdminBiz请求(包括注册、心跳和执行结果回调)
+     * 1、对XxlRpcProviderFactory进行初始化NettyHttpServer（q底层本质还是Netty实现）配置：
      *      传输方式：netty
      *      系列化方式：hessian
-     * 2、指定用于处理该NettyServer接收到的内容的类，并绑定处理请求信息的实例
-     * 3、根据xxlRpcProviderFactory封装servletServerHandler，这样当客户端通过netty网络请求过来时，
-     *  会有servletServerHandler的handle()调用AdminBiz的方法
+     * 2、为Netty服务端绑定一个key-value，指定对对应接口的请求，交给对应的实例处理：
+     *      这边指定了该NettyHttpServer会把对AdminBiz接口的请求交给对应的绑定的AdminBizImpl实例处理
+     *
+     * 总结：实际上，当前xxlRpcProviderFactory对应的Netty服务端会接收执行器发过来的两种请求：
+     *      a、执行器会每隔30s向当前nettyHttpServer发送registry请求，从而执行器和调度器保持了心跳连接。
+     *      b、执行器在执行完调度任务后，会向当前nettyHttpServer发送callback请求，回调通知调度器执行结果。
      */
     private void initRpcProvider(){
-        // init
+        // 创建一个 XxlRpcProviderFactory 实例
         XxlRpcProviderFactory xxlRpcProviderFactory = new XxlRpcProviderFactory();
-        xxlRpcProviderFactory.initConfig(
-                NetEnum.NETTY_HTTP,
-                Serializer.SerializeEnum.HESSIAN.getSerializer(),
+        xxlRpcProviderFactory.initConfig(//初始化一个NettyHttpServer
+                NetEnum.NETTY_HTTP,//底层网络连接方式
+                Serializer.SerializeEnum.HESSIAN.getSerializer(),//rpc的序列化方式
                 null,
                 0,
                 XxlJobAdminConfig.getAdminConfig().getAccessToken(),
                 null,
                 null);
 
-        // add services
+        // 为Netty服务端绑定一个key-value，指定对对应接口的请求，交给对应的实例处理
         xxlRpcProviderFactory
                 .addService(
                         AdminBiz.class.getName(),
-                        null, XxlJobAdminConfig.getAdminConfig()
-                                .getAdminBiz());
+                        null,
+                        XxlJobAdminConfig.getAdminConfig().getAdminBiz()//AdminBizImpl实例，真正处理nettyClient请求的对象
+                );
 
-        // servlet handler
         servletServerHandler = new ServletServerHandler(xxlRpcProviderFactory);
     }
     private void stopRpcProvider() throws Exception {

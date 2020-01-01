@@ -24,7 +24,9 @@ import java.util.List;
 
 /**
  * @author xuxueli 2017-07-27 21:54:20
- * 这个是调度器实现类，会接收执行器的回调
+ * 这个是调度器实现类，会接收执行器的回调，获得执行回调通知的结果
+ * 注意：
+ *      调度器会启动一个失败线程检测失败的日志，如果重试次数大于0，则进行任务重试。
  */
 @Service
 public class AdminBizImpl implements AdminBiz {
@@ -57,6 +59,12 @@ public class AdminBizImpl implements AdminBiz {
      * 执行器把执行结果回调通知给调度器
      * @param handleCallbackParam
      * @return
+     * 1、调度器根据执行器回调的任务id，查询事先保存的执行日志，如果执行器日志没有，则抛出异常。
+     * 2、检查执行器回调的结果码
+     * 3、如果执行器回调返回成功。
+     *     a、获取任务信息。
+     *     b、检查任务下有没有子任务，有的话就分别触发各个子任务。
+     * 4、更新当前回调任务的处理结果日志信息。
      */
     private ReturnT<String> callback(HandleCallbackParam handleCallbackParam) {
         // valid log item
@@ -70,7 +78,8 @@ public class AdminBizImpl implements AdminBiz {
 
         // trigger success, to trigger child job
         String callbackMsg = null;
-        if (IJobHandler.SUCCESS.getCode() == handleCallbackParam.getExecuteResult().getCode()) {
+        //获取执行器返回的结果的code
+        if (IJobHandler.SUCCESS.getCode() == handleCallbackParam.getExecuteResult().getCode()) {//如果执行器处理成功
             XxlJobInfo xxlJobInfo = xxlJobInfoDao.loadById(log.getJobId());
             if (xxlJobInfo!=null && xxlJobInfo.getChildJobId()!=null && xxlJobInfo.getChildJobId().trim().length()>0) {
                 callbackMsg = "<br><br><span style=\"color:#00c0ef;\" > >>>>>>>>>>>"+ I18nUtil.getString("jobconf_trigger_child_run") +"<<<<<<<<<<< </span><br>";

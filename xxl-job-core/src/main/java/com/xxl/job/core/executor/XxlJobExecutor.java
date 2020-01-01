@@ -81,7 +81,7 @@ public class XxlJobExecutor  {
         XxlJobFileAppender.initLogPath(logPath);
 
         // 初始化XxlRpcReferenceBean列表，每个XxlRpcReferenceBean是一个内部持有到调度器地址的netty网络连接AdminBiz代理对象的，用于向配置的调度中心admin地址列表中的每个调度中心发送注册执行器的restful请求：http://127.0.0.1:8080/xxl-job-admin/api
-        //执行器向调度器发送心跳，就是通过该XxlRpcReferenceBean每隔30s发送一次
+        // 执行器向调度器发送心跳，就是通过该XxlRpcReferenceBean每隔30s发送一次
         initAdminBizList(adminAddresses, accessToken);
 
         // 启动定时清除日志的线程
@@ -92,7 +92,7 @@ public class XxlJobExecutor  {
         // 启动另一个执行器的执行线程XxlRpcProviderFactory这个类是XXl其他的开源项目，自研RPC
         port = port>0?port: NetUtil.findAvailablePort(9999);
         ip = (ip!=null&&ip.trim().length()>0)?ip: IpUtil.getIp();
-        //初始化一个以Netty为网络传输的方式的RPC调用接口，用于接收调度中心的回调请求
+        //初始化一个以Netty为网络传输的方式的RPC调用接口，用于接收调度中心的回调ExecutorBiz.run方法的请求
         initRpcProvider(ip, port, appName, accessToken);
     }
     public void destroy(){
@@ -130,6 +130,16 @@ public class XxlJobExecutor  {
      * @param adminAddresses 调度中心的地址(这里是xxl-job的admin)
      * @param accessToken
      * @throws Exception
+     * 1、遍历当前执行器配置的调度器的列表
+     *      注意:因为调度器支持集群配置，所以当有多个调度器地址时候，用','号分隔
+     * 2、遍历每个调度地址，并根据调度系统的地址，为每一个调度系统地址创建AdminBiz代理对象XxlRpcReferenceBean，代理对象底层内部都持有一个Netty的客户端连接，NettyClient的连接方式：
+     *      序列化方式：hessian
+     *      同步
+     *      负载均衡：轮询
+     *      地址：http://127.0.0.1:8080/xxl-job-admin
+     *   这些指向调度器地址的代理对象的主要有两个作用：
+     *      a、用于向调度器注册(包括保持心跳)或移除注册。
+     *      b、执行器将执行结果通过该代理对象对象进行回调。
      */
     private void initAdminBizList(String adminAddresses, String accessToken) throws Exception {
         serializer = Serializer.SerializeEnum.HESSIAN.getSerializer();
@@ -199,6 +209,8 @@ public class XxlJobExecutor  {
      * @param accessToken
      * @throws Exception
      * 启动了一个以netty作为通讯模型、Hessian作为序列化方式的、ExecutorServiceRegistry作为注册逻辑实现类的服务提供端。
+     * 1、获得本地执行器的ip和端口
+     * 2、创建一个XxlRpcProviderFactory
      */
     private void initRpcProvider(String ip, int port, String appName, String accessToken) throws Exception {
 

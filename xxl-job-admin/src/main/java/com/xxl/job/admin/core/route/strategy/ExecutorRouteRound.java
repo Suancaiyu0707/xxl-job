@@ -16,7 +16,7 @@ public class ExecutorRouteRound extends ExecutorRouter {
     private static ConcurrentHashMap<Integer, Integer> routeCountEachJob = new ConcurrentHashMap<Integer, Integer>();
     private static long CACHE_VALID_TIME = 0;
     private static int count(int jobId) {
-        // cache clear
+        // 每隔24小时重新轮询
         if (System.currentTimeMillis() > CACHE_VALID_TIME) {
             routeCountEachJob.clear();
             CACHE_VALID_TIME = System.currentTimeMillis() + 1000*60*60*24;
@@ -24,7 +24,9 @@ public class ExecutorRouteRound extends ExecutorRouter {
 
         // count++
         Integer count = routeCountEachJob.get(jobId);
-        count = (count==null || count>1000000)?(new Random().nextInt(100)):++count;  // 初始化时主动Random一次，缓解首次压力
+        count = (count==null || count>1000000)?
+                (new Random().nextInt(100)) // 初始化时主动Random一次，缓解首次压力
+                :++count; //如果不是第一次的话，每次就递增一个索引
         routeCountEachJob.put(jobId, count);
         return count;
     }

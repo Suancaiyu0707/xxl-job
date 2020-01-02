@@ -57,7 +57,7 @@ public class XxlJobTrigger {
         int finalFailRetryCount = failRetryCount>=0?failRetryCount:jobInfo.getExecutorFailRetryCount();
         // 获得调度任务对应的额执行器(会调用对应的执行器)
         XxlJobGroup group = XxlJobAdminConfig.getAdminConfig().getXxlJobGroupDao().load(jobInfo.getJobGroup());
-        //获得分片的参数规则：根据'/'进行分割
+        //获得分片的参数规则：根据'/'进行分割 。如果是重试的话，该分片信息为上一次分片的信息
         // sharding param
         int[] shardingParam = null;
         if (executorShardingParam!=null){
@@ -192,12 +192,12 @@ public class XxlJobTrigger {
         triggerMsgSb.append("<br><br><span style=\"color:#00c0ef;\" > >>>>>>>>>>>"+ I18nUtil.getString("jobconf_trigger_run") +"<<<<<<<<<<< </span><br>")
                 .append((routeAddressResult!=null&&routeAddressResult.getMsg()!=null)?routeAddressResult.getMsg()+"<br><br>":"").append(triggerResult.getMsg()!=null?triggerResult.getMsg():"");
 
-        // 6、save log trigger-info
-        jobLog.setExecutorAddress(address);
-        jobLog.setExecutorHandler(jobInfo.getExecutorHandler());
-        jobLog.setExecutorParam(jobInfo.getExecutorParam());
-        jobLog.setExecutorShardingParam(shardingParam);
-        jobLog.setExecutorFailRetryCount(finalFailRetryCount);
+        // 6、save log trigger-info 保存任务调度的信息
+        jobLog.setExecutorAddress(address);//当前调度的执行器地址
+        jobLog.setExecutorHandler(jobInfo.getExecutorHandler());//当前调度的执行器的JobHandler
+        jobLog.setExecutorParam(jobInfo.getExecutorParam());//当前调度的执行参数
+        jobLog.setExecutorShardingParam(shardingParam);//参数调度的分片信息(重试时，可用该信息保证尽量不在同一个调度器里重试)
+        jobLog.setExecutorFailRetryCount(finalFailRetryCount);//重试的次数
         //jobLog.setTriggerTime();
         jobLog.setTriggerCode(triggerResult.getCode());
         jobLog.setTriggerMsg(triggerMsgSb.toString());

@@ -30,6 +30,13 @@ public class ExecutorBizImpl implements ExecutorBiz {
         return ReturnT.SUCCESS;
     }
 
+    /**
+     * 心跳检查某个Job对应的JobThread是否空闲
+     * @param jobId 任务
+     * @return
+     * 1、获取job对应的执行线程JobThread
+     *
+     */
     @Override
     public ReturnT<String> idleBeat(int jobId) {
 

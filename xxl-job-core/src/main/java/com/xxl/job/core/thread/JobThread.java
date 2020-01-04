@@ -87,7 +87,7 @@ public class JobThread extends Thread{
 	}
 
     /**
-     * kill job thread
+     * 停止JobThread线程，并记录被停止的原因
      *
      * @param stopReason
      */
@@ -102,7 +102,9 @@ public class JobThread extends Thread{
 	}
 
     /**
-     * is running job
+     * 判断这个JobThread是否在运行，满足以下两个条件则表示在运行状态：
+	 * 		1、线程状态是running
+	 * 		2、队列中存在等待执行的任务
      * @return
      */
     public boolean isRunningOrHasQueue() {

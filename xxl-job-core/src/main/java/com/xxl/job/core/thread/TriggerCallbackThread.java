@@ -22,9 +22,16 @@ import java.util.concurrent.TimeUnit;
  * Created by xuxueli on 16/7/22.
  * 启动针对任务结果回调处理线程
  * 执行器通过当前线程向调度器发起回调，返回调度任务执行的结果
- * 1、执行器ExecutorBizImpl接收到调度器的分配的任务，会调用run()方法
- * 2、ExecutorBizImpl会根据jobId将任务交给对应的JobHandler去调用
- * 3、JobHandler会把执行结果放到回调队列callBackQueue里，然后回调调度器。
+ * 不断的从排队队列里提取准备回调调用器，通知执行结果
+ *
+ * 线程triggerCallbackThread：
+ *      1、从队列callBackQueue中获取任务执行结果。
+ *      2、回调调度器，通知对应的任务的执行结果。
+ *          如果回调失败了，将失败的回调信息记录到回调日志文件里：
+ *          比如/data/applogs/xxl-job/jobhandler/callbacklog/xxl-job-callback-1514171109000.log
+ * 线程triggerRetryCallbackThread：
+ *      在线程triggerCallbackThread中，我们指定，在回调调度器通知执行结果的时候可能会失败，并且会把失败信息记录到/data/applogs/xxl-job/jobhandler/callbacklog目录下。
+ *      所以triggerRetryCallbackThread的任务就是不断的扫描/data/applogs/xxl-job/jobhandler/callbacklog目录进行重试通知调度器执行结果。
  */
 public class TriggerCallbackThread {
     private static Logger logger = LoggerFactory.getLogger(TriggerCallbackThread.class);
@@ -59,6 +66,14 @@ public class TriggerCallbackThread {
 
     /***
      * 不断的从排队队列里提取准备回调调用器，通知执行结果
+     * 线程triggerCallbackThread：
+     *      1、从队列callBackQueue中获取任务执行结果。
+     *      2、回调调度器，通知对应的任务的执行结果。
+     *          如果回调失败了，将失败的回调信息记录到回调日志文件里：
+     *          比如/data/applogs/xxl-job/jobhandler/callbacklog/xxl-job-callback-1514171109000.log
+     * 线程triggerRetryCallbackThread：
+     *      在线程triggerCallbackThread中，我们指定，在回调调度器通知执行结果的时候可能会失败，并且会把失败信息记录到/data/applogs/xxl-job/jobhandler/callbacklog目录下。
+     *      所以triggerRetryCallbackThread的任务就是不断的扫描/data/applogs/xxl-job/jobhandler/callbacklog目录进行重试通知调度器执行结果。
      */
     public void start() {
 
@@ -149,6 +164,10 @@ public class TriggerCallbackThread {
         triggerRetryCallbackThread.start();
 
     }
+
+    /***
+     * 停止的话，会中断triggerCallbackThread和triggerRetryCallbackThread线程
+     */
     public void toStop(){
         toStop = true;
         // stop callback, interrupt and wait
@@ -182,13 +201,14 @@ public class TriggerCallbackThread {
                     callbackLog(callbackParamList, "<br>----------- xxl-job job callback finish.");
                     callbackRet = true;
                     break;
-                } else {
+                } else {//如果回调没有成功，将回调调度器的结果记录到对应的日志文件，比如：/data/applogs/xxl-job/jobhandler/yyyy-MM-dd/9999.log
                     callbackLog(callbackParamList, "<br>----------- xxl-job job callback fail, callbackResult:" + callbackResult);
                 }
             } catch (Exception e) {
                 callbackLog(callbackParamList, "<br>----------- xxl-job job callback error, errorMsg:" + e.getMessage());
             }
         }
+        //如果回调失败了，将失败的回调信息记录到回调日志文件里，比如/data/applogs/xxl-job/jobhandler/callbacklog/xxl-job-callback-1514171109000.log
         if (!callbackRet) {
             appendFailCallbackFile(callbackParamList);
         }
@@ -196,6 +216,8 @@ public class TriggerCallbackThread {
 
     /**
      * callback log
+     * 将回调调度器的结果记录到对应的日志文件，比如：/data/applogs/xxl-job/jobhandler/yyyy-MM-dd/9999.log
+     *  其中9999是任务的某次调度
      */
     private void callbackLog(List<HandleCallbackParam> callbackParamList, String logContent){
         for (HandleCallbackParam callbackParam: callbackParamList) {
@@ -211,6 +233,14 @@ public class TriggerCallbackThread {
     private static String failCallbackFilePath = XxlJobFileAppender.getLogPath().concat(File.separator).concat("callbacklog").concat(File.separator);
     private static String failCallbackFileName = failCallbackFilePath.concat("xxl-job-callback-{x}").concat(".log");
 
+    /***
+     * 当执行器要把任务执行的结果回调通知给调度器失败的时候，会触发该方法，记录回调失败的日志
+     *
+     * @param callbackParamList
+     * 1、判断对调度器的回调参数不为空
+     * 2、将回调参数序列化
+     * 3、将本次回调参数记录到 /data/applogs/xxl-job/jobhandler/callbacklog/xxl-job-callback-1514171109000.log 日志文件中
+     */
     private void appendFailCallbackFile(List<HandleCallbackParam> callbackParamList){
         // valid
         if (callbackParamList==null || callbackParamList.size()==0) {
@@ -219,7 +249,7 @@ public class TriggerCallbackThread {
 
         // append file
         byte[] callbackParamList_bytes = XxlJobExecutor.getSerializer().serialize(callbackParamList);
-
+        //回调记录回调参数的日志文件：eg:/data/applogs/xxl-job/jobhandler/callbacklog/xxl-job-callback-1514171109000.log
         File callbackLogFile = new File(failCallbackFileName.replace("{x}", String.valueOf(System.currentTimeMillis())));
         if (callbackLogFile.exists()) {
             for (int i = 0; i < 100; i++) {
@@ -232,6 +262,9 @@ public class TriggerCallbackThread {
         FileUtil.writeFileContent(callbackLogFile, callbackParamList_bytes);
     }
 
+    /***
+     * 读取回调失败的目录，遍历每一个失败的文件，不断的进行重试回调通知调度器
+     */
     private void retryFailCallbackFile(){
 
         // valid /data/applogs/xxl-job/jobhandler/callbacklog/

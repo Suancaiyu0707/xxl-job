@@ -21,12 +21,14 @@ import java.util.Date;
 /**
  * xxl-job trigger
  * Created by xuxueli on 17/7/13.
+ * 这个是一个xxl-job的触发器，它主要的职责：
+ *      对待执行的任务的基本信息的校验，包括重试次数、分片信息、选择执行器地址并调用对应的执行器进行调度任务执行
  */
 public class XxlJobTrigger {
     private static Logger logger = LoggerFactory.getLogger(XxlJobTrigger.class);
 
     /**
-     * trigger job
+     * 调度器
      *
      * @param jobId 执行任务的jobinfo的id
      *              eg：6
@@ -41,6 +43,10 @@ public class XxlJobTrigger {
      * @param executorParam eg：""
      *          null: use job param
      *          not null: cover job param
+     *
+     * 1、对待执行的任务的基本信息的校验，包括重试次数、分片信息
+     * 2、根据路由策略选择执行器的地址
+     * 3、根据选中的执行器的地址进行任务调度触发
      */
     public static void trigger(int jobId, TriggerTypeEnum triggerType, int failRetryCount, String executorShardingParam, String executorParam) {
         // 校验任务信息是否存在
@@ -107,6 +113,9 @@ public class XxlJobTrigger {
      * @param triggerType     触发类型
      * @param index      分片的索引
      * @param total      分片的总数
+     *  1、数据库记录本地任务的调度日志
+     *  2、根据路由策略选中执行器的地址
+     *  3、调用2runExecutor 进行调度任务
      */
     private static void processTrigger(XxlJobGroup group, XxlJobInfo jobInfo, int finalFailRetryCount, TriggerTypeEnum triggerType, int index, int total){
 
@@ -224,7 +233,10 @@ public class XxlJobTrigger {
      * }
      * @param address 被选中的执行器的地址：192.168.0.103:9999
      * @return
+     * 1、根据执行器地址，检查执行器地址对应的客户端连接NettyHttpClient，没有则创建新的NettyHttpClient
+     * 2、通过NettyHttpClient客户端连接向执行器发起调度请求
      */
+
     public static ReturnT<String> runExecutor(TriggerParam triggerParam, String address){
         ReturnT<String> runResult = null;
         try {

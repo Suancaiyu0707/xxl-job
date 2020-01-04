@@ -22,10 +22,10 @@ public class JobTriggerPoolHelper {
     /***
      * 初始化可变大小的线程池：
      * 快任务的线程池：fastTriggerPool
-     *
-     * 满任务的线程池：slowTriggerPool
+     *              核心线程数50，最大200
+     * 慢任务的线程池：slowTriggerPool
+     *              核心线程数10，最大100
      */
-    // fast/slow thread pool
     private ThreadPoolExecutor fastTriggerPool = new ThreadPoolExecutor(
             50,
             200,
@@ -63,7 +63,7 @@ public class JobTriggerPoolHelper {
     private volatile Map<Integer, AtomicInteger> jobTimeoutCountMap = new ConcurrentHashMap<>();
 
     /***
-     * 添加一个触发任务
+     * 触发调度器利用线程池调度任务的执行
      * @param jobId jobInfo任务ID
      *              eg：6
      * @param triggerType 任务触发类型
@@ -78,7 +78,7 @@ public class JobTriggerPoolHelper {
 
         // 默认初始化采用执行快的线程池
         ThreadPoolExecutor triggerPool_ = fastTriggerPool;
-        //检查当前jobInfo在最近一分钟内执行的时间超过300ms的次数（超过300ms就被认为是慢执行）
+        //检查当前jobInfo在最近一分钟内执行的时间超过300ms的次数（超过300ms就被认为是慢执行，则会交给慢执行的线程池调度）
         AtomicInteger jobTimeoutCount = jobTimeoutCountMap.get(jobId);
         //如果一分钟内，执行时间超过300ms的次数>10，则采用慢线程池
         if (jobTimeoutCount!=null && jobTimeoutCount.get() > 10) {      // job-timeout 10 times in 1 min

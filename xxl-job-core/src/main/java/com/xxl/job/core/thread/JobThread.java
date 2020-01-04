@@ -74,13 +74,14 @@ public class JobThread extends Thread{
      * @return
      */
 	public ReturnT<String> pushTriggerQueue(TriggerParam triggerParam) {
-		// avoid repeat
-		if (triggerLogIdSet.contains(triggerParam.getLogId())) {
+		// 如果定时线程里存在本次调度，则返回重复触发的失败结果，这里判断的是logId，不是jobId，表示某次的触发不能重复被放到待执行的对列triggerQueue中
+		if (triggerLogIdSet.contains(triggerParam.getLogId())) {//表示某一个调度任务的某一次重复调用了，所以返回失败
 			logger.info(">>>>>>>>>>> repeate trigger job, logId:{}", triggerParam.getLogId());
 			return new ReturnT<String>(ReturnT.FAIL_CODE, "repeate trigger job, logId:" + triggerParam.getLogId());
 		}
-
+		//记录当前某个调度任务的某次执行的id
 		triggerLogIdSet.add(triggerParam.getLogId());
+		//将调度任务的此次调度放到队列triggerQueue中，等待线程执行
 		triggerQueue.add(triggerParam);
         return ReturnT.SUCCESS;
 	}

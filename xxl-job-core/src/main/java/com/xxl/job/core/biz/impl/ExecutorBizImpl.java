@@ -80,6 +80,19 @@ public class ExecutorBizImpl implements ExecutorBiz {
      * 这边我们会发现，每个jobInfo会对应一个单独的JobThread
      * @param triggerParam
      * @return
+     * 1、根据调度任务id检查内存里是否已存在对应的任务线程
+     *      每个jobHandler都会绑定一个JobThread线程。如果是Bean的方式的话，那么在配置任务任务的时候是需要指定执行器上对应的任务处理器jobHandler。
+     *      因为每个调度任务都会绑定一个特定的JobThread，用于专门执行该类Job的。
+     *      要注意，一个JobThread可能会响应执行多个任务的调度。
+     * 2、判断任务的运行模式，获取真正负责任务执行的任务处理器：jobHandler
+     *      如果是Bean模式，则会根据任务配置的jobHandler从当前执行器中获取对应的JobHandler对象（执行器在启动的时候会把自身包含的所有的JobHandler都注册到内存里）
+     *      如果是GLUE(Java)模式，则检查当前JobThread是否已经存在jobHandler，没有的话则会根据配置的源码通过反射生成加载并创建一个jobHandler跟当前JobThread绑定。
+     * 3、检查调度任务的阻塞策略(调度器传过来的)
+     *      a、DISCARD_LATER：表示丢弃后续任务策略，那么如果当前JobThread有任务则在running，或者说对列存在等待的任务，则丢弃当前需要执行的任务，执行调度器失败。
+     *      b、覆盖策略：表示覆盖之前任务的策略，则会中断正在执行的JobThread，同时创建一个新的JobThread，并绑定到对应的Jobhandler(内存里也会更新映射关系)。
+     * 4、将本次调度的任务推送到JobThread线程的对列中，并返回调度器执行成功.
+     *      这里我们可以发现，当返回调度执行成功后，它其实只是放到JobThread的队列中等待执行，并未被真正的执行。
+     *      如果JobThread的队列中包含本次要调度的任务(也就是logId已存在，不是JobId哦)，则会返回调度器某一次调度任务重复调度了。
      */
     @Override
     public ReturnT<String> run(TriggerParam triggerParam) {
@@ -118,8 +131,9 @@ public class ExecutorBizImpl implements ExecutorBiz {
 
             // valid old jobThread
             if (jobThread != null &&
-                    !(jobThread.getHandler() instanceof GlueJobHandler
-                        && ((GlueJobHandler) jobThread.getHandler()).getGlueUpdatetime()==triggerParam.getGlueUpdatetime() )) {
+                    !(
+                            jobThread.getHandler() instanceof GlueJobHandler
+                            && ((GlueJobHandler) jobThread.getHandler()).getGlueUpdatetime()==triggerParam.getGlueUpdatetime() )) {
                 // change handler or gluesource updated, need kill old thread
                 removeOldReason = "change job source or glue type, and terminate the old job thread.";
 

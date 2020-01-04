@@ -109,6 +109,23 @@ public class JobThread extends Thread{
         return running || triggerQueue.size()>0;
     }
 
+	/***
+	 * 线程不断的从triggerQueue中执行
+	 * 1、不断的从triggerQueue中拉取待执行的任务TriggerParam（最长可阻塞3s）
+	 * 2、从triggerLogIdSet中移除调度任务当次的调度记录
+	 * 3、根据触发日期创建一个目录，比如/data/applogs/xxl-job/jobhandler/yyyy-MM-dd
+	 * 4、在创建的目录下根据logId创建当前任务调度对应的调度记录文件：/data/applogs/xxl-job/jobhandler/yyyy-MM-dd/9999.log
+	 * 		该日志文件主要是用来记录某个任务调度的某一次的调度日志。这些日志文件会被JobLogFileCleanThread定时清理。
+	 * 5、调用JobHandler开始执行任务：
+	 * 		配置了超时时间，则会new一个线程，并通过FutureTask来控制超时时间。
+	 * 		没有配置超时时间，则直接交给JobHandler执行。
+	 * 6、将执行的日志记录到/data/applogs/xxl-job/jobhandler/yyyy-MM-dd/9999.log日志文件中
+	 * 7、将执行结果存放到TriggerCallbackThread的回调队列callBackQueue中，并最终回调调度器通知执行结果。
+	 * 注意：
+	 * 		如果存在连续90s，都没有从triggerQueue中获取到等待执行的任务，那么可以把这个JobThread从内存移除并中断，这样节省内存，还避免了CPU浪费。
+	 *		如果这个处理器在执行过程中被中止了，则记录任务被中止的原因，并通知调度器。
+	 *		如果线程在遍历过程中，发生自身被中止了，这个时候它会遍历队列中等待执行的任务，并全部返回执行失败的结果，回调给调度器。
+	 */
     @Override
 	public void run() {
 
@@ -161,7 +178,7 @@ public class JobThread extends Thread{
 							//等待执行结果，超过一定的时间没返回的话，则请求超时
 							executeResult = futureTask.get(triggerParam.getExecutorTimeout(), TimeUnit.SECONDS);
 						} catch (TimeoutException e) {//请求超时
-
+							//将调度任务执行的日志记录到 logFileName 中
 							XxlJobLogger.log("<br>----------- xxl-job job execute timeout");
 							XxlJobLogger.log(e);
 

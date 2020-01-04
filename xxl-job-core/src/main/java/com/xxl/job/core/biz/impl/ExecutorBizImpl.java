@@ -31,11 +31,11 @@ public class ExecutorBizImpl implements ExecutorBiz {
     }
 
     /**
-     * 心跳检查某个Job对应的JobThread是否空闲
+     * 心跳检查某个Job对应的JobThread是否空闲(路由策略会用到)
      * @param jobId 任务
      * @return
      * 1、获取job对应的执行线程JobThread
-     *
+     * 2、检查当前JobThread线程是否处于running，或有任务正在队列里排队执行，是的话返回500，不然几句返回true
      */
     @Override
     public ReturnT<String> idleBeat(int jobId) {
